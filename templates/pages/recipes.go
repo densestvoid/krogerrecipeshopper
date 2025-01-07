@@ -14,15 +14,21 @@ import (
 func Recipes() gomponents.Node {
 	return BasePage("Recipes", "/", gomponents.Group{
 		html.Div(
-			htmx.Get("/recipes/table"),
-			htmx.Swap("innerHTML"),
-			htmx.Trigger("load,recipe-update from:body"),
-		),
-		components.ModalButton(
-			"recipe-details-modal",
-			"Add recipe",
-			"/recipes/modal",
-			"#recipe-details-form",
+			html.Class("text-center"),
+			html.H3(
+				gomponents.Text("Recipes"),
+			),
+			html.Div(
+				htmx.Get("/recipes/table"),
+				htmx.Swap("innerHTML"),
+				htmx.Trigger("load,recipe-update from:body"),
+			),
+			components.ModalButton(
+				"recipe-details-modal",
+				"Add recipe",
+				"/recipes/modal",
+				"#recipe-details-form",
+			),
 		),
 		components.Modal("recipe-details-modal", "Add recipe",
 			gomponents.Group{},

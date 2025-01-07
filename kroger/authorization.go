@@ -19,6 +19,7 @@ const (
 	GrantTypeRefreshToken      = "refresh_token"
 
 	ScopeProductCompact = "product.compact"
+	ScopePRofileCompact = "profile.compact"
 	ScopeCartBasicWrite = "cart.basic:write"
 )
 

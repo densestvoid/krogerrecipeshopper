@@ -21,5 +21,8 @@
 go.work
 go.work.sum
 
+# Test DB
+cmd/recipe/test-db
+
 # VSCode artifacts
 **.DS_Store

@@ -18,10 +18,10 @@ const (
 	ClientID      = "recipe-shopper-276be53a09a3bb09150aef03b5783ebc7840425982417759754"
 	ClientSecret  = "L6jkJmLdTBysOzNFABmKE06qa-5qwUW_tEXga1g-"
 	OAuth2BaseURL = "https://api.kroger.com/v1/connect/oauth2"
-	RedirectUrl   = "https://4a05-50-5-199-176.ngrok-free.app/auth"
+	RedirectUrl   = "https://2908-208-102-49-60.ngrok-free.app/auth"
 
 	DatabaseAddr     = "localhost"
-	DatabasePort     = "32768"
+	DatabasePort     = "32779"
 	DatabaseUser     = "kroger"
 	DatabasePassword = "password"
 )

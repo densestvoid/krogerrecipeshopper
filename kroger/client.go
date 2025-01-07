@@ -48,8 +48,10 @@ func (c *krogerClient) Do(ctx context.Context, method string, endpoint string, r
 		return err
 	}
 
-	if err := request.WriteHTTPRequest(httpReq); err != nil {
-		return err
+	if request != nil {
+		if err := request.WriteHTTPRequest(httpReq); err != nil {
+			return err
+		}
 	}
 
 	values := httpReq.URL.Query()

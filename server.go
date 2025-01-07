@@ -43,21 +43,31 @@ func AuthenticationMiddleware(config Config) func(next http.Handler) http.Handle
 				return
 			} else if token, err := r.Cookie("refreshToken"); err == nil && token.Value != "" && token.Valid() == nil {
 				authClient := kroger.NewAuthorizationClient(http.DefaultClient, kroger.PublicEnvironment, config.ClientID, config.ClientSecret)
-				resp, err := authClient.PostToken(r.Context(), kroger.RefreshToken{
+				authResp, err := authClient.PostToken(r.Context(), kroger.RefreshToken{
 					RefreshToken: token.Value,
 				})
 				if err != nil {
 					http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 					return
 				}
+				identityClient := kroger.NewIdentityClient(http.DefaultClient, kroger.PublicEnvironment, authResp.AccessToken)
+				profileResp, err := identityClient.GetProfile(r.Context())
+				if err != nil {
+					http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+					return
+				}
 				http.SetCookie(w, &http.Cookie{
 					Name:   "accessToken",
-					Value:  resp.AccessToken,
-					MaxAge: resp.ExpiresIn,
+					Value:  authResp.AccessToken,
+					MaxAge: authResp.ExpiresIn,
 				})
 				http.SetCookie(w, &http.Cookie{
 					Name:  "refreshToken",
-					Value: resp.RefreshToken,
+					Value: authResp.RefreshToken,
+				})
+				http.SetCookie(w, &http.Cookie{
+					Name:  "userID",
+					Value: profileResp.Profile.ID.String(),
 				})
 				http.Redirect(w, r, r.RequestURI, http.StatusTemporaryRedirect)
 				return
@@ -79,7 +89,7 @@ func NewServer(ctx context.Context, logger *slog.Logger, config Config, repo *da
 
 	mux.Get("/auth", func(w http.ResponseWriter, r *http.Request) {
 		authClient := kroger.NewAuthorizationClient(http.DefaultClient, kroger.PublicEnvironment, config.ClientID, config.ClientSecret)
-		resp, err := authClient.PostToken(r.Context(), kroger.AuthorizationCode{
+		authResp, err := authClient.PostToken(r.Context(), kroger.AuthorizationCode{
 			Code:        r.FormValue("code"),
 			RedirectURI: config.RedirectUrl,
 		})
@@ -87,14 +97,24 @@ func NewServer(ctx context.Context, logger *slog.Logger, config Config, repo *da
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		identityClient := kroger.NewIdentityClient(http.DefaultClient, kroger.PublicEnvironment, authResp.AccessToken)
+		profileResp, err := identityClient.GetProfile(r.Context())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		http.SetCookie(w, &http.Cookie{
 			Name:   "accessToken",
-			Value:  resp.AccessToken,
-			MaxAge: resp.ExpiresIn,
+			Value:  authResp.AccessToken,
+			MaxAge: authResp.ExpiresIn,
 		})
 		http.SetCookie(w, &http.Cookie{
 			Name:  "refreshToken",
-			Value: resp.RefreshToken,
+			Value: authResp.RefreshToken,
+		})
+		http.SetCookie(w, &http.Cookie{
+			Name:  "userID",
+			Value: profileResp.Profile.ID.String(),
 		})
 		http.Redirect(w, r, "/", http.StatusFound)
 	})
