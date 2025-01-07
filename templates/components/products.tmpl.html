@@ -1,0 +1,10 @@
+<h3>Search Products</h3>
+<input class="form-control" type="search"
+    name="search" placeholder="Begin typing to search products..."
+    hx-post="/products/search"
+    hx-trigger="input changed delay:500ms, keyup[key=='Enter']"
+    hx-target="#search-results"
+    hx-indicator=".htmx-indicator"
+>
+<span class="htmx-indicator">Searching...</span>
+<div id="search-results"></div>

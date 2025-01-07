@@ -40,8 +40,11 @@ type getLocationsRequest struct {
 	GetLocationsRequest
 }
 
-func (r *getLocationsRequest) applyToParams(params url.Values) {
+func (r *getLocationsRequest) WriteHTTPRequest(req *http.Request) error {
+	params := req.URL.Query()
 	r.GetLocationsRequest.getLocations(params)
+	req.URL.RawQuery = params.Encode()
+	return nil
 }
 
 type GetLocationsByIDRequest struct {
@@ -115,14 +118,20 @@ func (r *GetLocationsWithLatitudeAndLongitudeRequest) geographicArea(params url.
 }
 
 type GetLocationsResponse struct {
-	Locations []Location             `json:"data"`
-	Errors    map[string]interface{} `json:"errors"`
-	Meta      map[string]interface{} `json:"meta"`
+	Meta      `json:"meta"`
+	Locations []Location `json:"data"`
 }
 
 func (c *LocationsClient) GetLocations(ctx context.Context, request GetLocationsRequest) (*GetLocationsResponse, error) {
 	var response GetLocationsResponse
-	if err := c.client.Do(ctx, http.MethodGet, LocationsEndpoint, &getLocationsRequest{request}, &response, WithAuth(c.auth())); err != nil {
+	if err := c.client.Do(
+		ctx,
+		http.MethodGet,
+		LocationsEndpoint,
+		&getLocationsRequest{request},
+		&HTTPResponseJSONParser{&response},
+		WithAuth(c.auth()),
+	); err != nil {
 		return nil, err
 	}
 	return &response, nil
@@ -133,9 +142,8 @@ type GetLocationRequest struct {
 }
 
 type GetLocationResponse struct {
-	Location Location               `json:"data"`
-	Errors   map[string]interface{} `json:"errors"`
-	Meta     map[string]interface{} `json:"meta"`
+	Meta     `json:"meta"`
+	Location Location `json:"data"`
 }
 
 func (c *LocationsClient) GetLocation(ctx context.Context, request GetLocationRequest) (*GetProductResponse, error) {
@@ -150,7 +158,7 @@ func (c *LocationsClient) GetLocation(ctx context.Context, request GetLocationRe
 		http.MethodGet,
 		path,
 		nil,
-		&response,
+		&HTTPResponseJSONParser{&response},
 		WithAuth(c.auth()),
 	); err != nil {
 		return nil, err

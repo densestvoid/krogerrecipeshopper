@@ -1,6 +1,7 @@
 package kroger
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,10 +13,6 @@ import (
 type krogerClient struct {
 	httpClient  *http.Client
 	environment string
-}
-
-type apiRequest interface {
-	applyToParams(params url.Values)
 }
 
 type option func(http.Header, url.Values)
@@ -32,7 +29,15 @@ func WithParam(key, value string) option {
 	}
 }
 
-func (c *krogerClient) Do(ctx context.Context, method string, endpoint string, request apiRequest, response any, options ...option) error {
+type HTTPRequestWriter interface {
+	WriteHTTPRequest(*http.Request) error
+}
+
+type HTTPResponseParser interface {
+	ParseHTTPResponse(*http.Response) error
+}
+
+func (c *krogerClient) Do(ctx context.Context, method string, endpoint string, request HTTPRequestWriter, response HTTPResponseParser, options ...option) error {
 	path, err := url.JoinPath(c.environment, endpoint)
 	if err != nil {
 		return err
@@ -42,12 +47,12 @@ func (c *krogerClient) Do(ctx context.Context, method string, endpoint string, r
 	if err != nil {
 		return err
 	}
-	// httpReq.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	if err := request.WriteHTTPRequest(httpReq); err != nil {
+		return err
+	}
 
 	values := httpReq.URL.Query()
-	if request != nil {
-		request.applyToParams(values)
-	}
 	for _, opt := range options {
 		opt(httpReq.Header, values)
 	}
@@ -59,11 +64,95 @@ func (c *krogerClient) Do(ctx context.Context, method string, endpoint string, r
 	}
 	defer resp.Body.Close()
 
+	return response.ParseHTTPResponse(resp)
+}
+
+type HTTPResponseBytesParser struct {
+	Bytes []byte
+}
+
+func (p *HTTPResponseBytesParser) ParseHTTPResponse(resp *http.Response) error {
+	// Get the body
+	var err error
+	p.Bytes, err = io.ReadAll(resp.Body)
+	return err
+}
+
+type Meta struct {
+	Pagination Pagination `json:"pagination"`
+}
+
+type Pagination struct {
+	Total int `json:"total"`
+	Start int `json:"start"`
+	Limit int `json:"limit"`
+}
+
+func (p Pagination) Prev() int {
+	return max(p.Start-p.Limit, 0)
+}
+
+func (p Pagination) Next() int {
+	return min(p.Start+p.Limit, p.Total)
+}
+
+type AuthError struct {
+	ErrorName        string `json:"error"`
+	ErrorDescription string `json:"error_description"`
+}
+
+func (e *AuthError) Error() string {
+	return fmt.Sprintf("Auth error: %s - %s", e.ErrorName, e.ErrorDescription)
+}
+
+type errors struct {
+	Errors APIError `json:"errors"`
+}
+
+type APIError struct {
+	Timestamp int    `json:"timestamp"`
+	Code      string `json:"code"`
+	Reason    string `json:"reason"`
+}
+
+func (e *APIError) Error() string {
+	return fmt.Sprintf("API error: %d - %s - %s", e.Timestamp, e.Code, e.Reason)
+}
+
+type HTTPResponseJSONParser struct {
+	value any
+}
+
+func (p *HTTPResponseJSONParser) ParseHTTPResponse(resp *http.Response) error {
+	// Get the body
 	bs, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(bs))
 
-	return json.NewDecoder(resp.Body).Decode(&response)
+	// Resettable read buffer
+	bytesReader := bytes.NewReader(bs)
+	decoder := json.NewDecoder(bytesReader)
+	decoder.DisallowUnknownFields()
+
+	// Check for auth error
+	var authError AuthError
+	if err := decoder.Decode(&authError); err == nil {
+		return &authError
+	}
+
+	// Reset
+	bytesReader.Seek(0, io.SeekStart)
+
+	// Check for API error
+	var apiError errors
+	if err := decoder.Decode(&apiError); err == nil {
+		return &apiError.Errors
+	}
+
+	// Reset
+	bytesReader.Seek(0, io.SeekStart)
+
+	// Decode the response
+	return decoder.Decode(&p.value)
 }

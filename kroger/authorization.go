@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 const (
@@ -39,50 +41,49 @@ func NewAuthorizationClient(client *http.Client, environment, clientID, clientSe
 	}
 }
 
-type GetAuthorizationRequest struct {
-	Scope       string
+type postTokenRequest struct {
+	Credentials Credentials
+}
+
+func (r *postTokenRequest) WriteHTTPRequest(req *http.Request) error {
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	values := url.Values{}
+	r.Credentials.credentials(values)
+	req.Body = io.NopCloser(strings.NewReader(values.Encode()))
+	return nil
+}
+
+type Credentials interface {
+	credentials(url.Values)
+}
+
+type AuthorizationCode struct {
+	Code        string
 	RedirectURI string
 }
 
-func (r GetAuthorizationRequest) applyToParams(params url.Values) {
-	params.Add("scope", r.Scope)
-	params.Add("redirect_uri", r.RedirectURI)
-	params.Add("response_type", "code") // Hard coded
-	// params.Add("state", randomState) // TODO: automate random value
+func (c AuthorizationCode) credentials(values url.Values) {
+	values.Add("grant_type", GrantTypeAuthorizationCode)
+	values.Add("code", c.Code)
+	values.Add("redirect_uri", c.RedirectURI)
 }
 
-type GetAuthorizationResponse struct {
-	ExpiresIn    int64  `json:"expires_in"`
-	AccessToken  string `json:"access_token"`
-	TokenType    string `json:"token_type"`
-	RefreshToken string `json:"refresh_token"`
+type ClientCredentials struct {
+	Scope string
 }
 
-func (c *AuthorizationClient) GetAuthorization(ctx context.Context, request GetAuthorizationRequest) (*GetAuthorizationResponse, error) {
-	var response GetAuthorizationResponse
-	if err := c.client.Do(
-		ctx,
-		http.MethodGet,
-		AuthorizationCodeEndpoint,
-		request,
-		&response,
-		WithParam("client_id", c.clientID),
-	); err != nil {
-		return nil, err
-	}
-	return &response, nil
+func (c ClientCredentials) credentials(values url.Values) {
+	values.Add("grant_type", GrantTypeClientCredentials)
+	values.Add("scope", c.Scope)
 }
 
-type PostTokenRequest struct {
-	GrantType   string `json:"grant_type"`
-	Scope       string `json:"scope"`
-	Code        string `json:"code"`
-	RedirectURI string `json:"redirest_uri"`
+type RefreshToken struct {
+	RefreshToken string
 }
 
-func (r PostTokenRequest) applyToParams(params url.Values) {
-	params.Add("grant_type", r.GrantType)
-	params.Add("scope", r.Scope)
+func (c RefreshToken) credentials(values url.Values) {
+	values.Add("grant_type", GrantTypeRefreshToken)
+	values.Add("refresh_token", c.RefreshToken)
 }
 
 type PostTokenResponse struct {
@@ -90,23 +91,19 @@ type PostTokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	TokenType    string `json:"token_type"`
 	RefreshToken string `json:"refresh_token"`
-
-	Error            string                 `json:"error"`
-	ErrorDescription string                 `json:"error_description"`
-	Errors           map[string]interface{} `json:"errors"`
 }
 
-func (c *AuthorizationClient) PostToken(ctx context.Context, request PostTokenRequest) (*PostTokenResponse, error) {
-	var response PostTokenResponse
+func (c *AuthorizationClient) PostToken(ctx context.Context, creds Credentials) (*PostTokenResponse, error) {
+	var token PostTokenResponse
 	if err := c.client.Do(
 		ctx,
 		http.MethodPost,
 		AccessTokenEndpoint,
-		request,
-		&response,
+		&postTokenRequest{creds},
+		&HTTPResponseJSONParser{&token},
 		WithAuth(fmt.Sprintf("Basic %s", c.clientAuthorization)),
 	); err != nil {
 		return nil, err
 	}
-	return &response, nil
+	return &token, nil
 }

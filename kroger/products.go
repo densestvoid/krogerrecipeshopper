@@ -3,6 +3,7 @@ package kroger
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -46,7 +47,8 @@ type GetProductsRequest struct {
 	LocationID *string
 }
 
-func (r *GetProductsRequest) applyToParams(params url.Values) {
+func (r *GetProductsRequest) WriteHTTPRequest(req *http.Request) error {
+	params := req.URL.Query()
 	if r.Filters != nil {
 		r.Filters.getProductsFilters(params)
 	}
@@ -54,6 +56,10 @@ func (r *GetProductsRequest) applyToParams(params url.Values) {
 	if r.LocationID != nil {
 		params.Add("filter.locationId", *r.LocationID)
 	}
+
+	req.URL.RawQuery = params.Encode()
+	slog.Debug(req.URL.RawQuery)
+	return nil
 }
 
 type GetProductsFilters interface {
@@ -94,19 +100,14 @@ type GetProductsByIDsFilter struct {
 func (r *GetProductsByIDsFilter) getProductsFilters(params url.Values) {
 	var productIDs []string
 	for _, id := range r.ProductIDs {
-		productIDs = append(productIDs, strconv.FormatInt(int64(id), 10))
+		productIDs = append(productIDs, fmt.Sprintf("%013d", id))
 	}
 	params.Add("filter.productId", strings.Join(productIDs, ","))
 }
 
 type GetProductsResponse struct {
-	Products []Product              `json:"data"`
-	Errors   map[string]interface{} `json:"errors"`
-	Meta     map[string]interface{} `json:"meta"`
-
-	// Timestamp int
-	// Code      string
-	// Reason    string
+	Products []Product `json:"data"`
+	Meta     Meta      `json:"meta"`
 }
 
 func (c *ProductsClient) GetProducts(ctx context.Context, request GetProductsRequest) (*GetProductsResponse, error) {
@@ -116,11 +117,12 @@ func (c *ProductsClient) GetProducts(ctx context.Context, request GetProductsReq
 		http.MethodGet,
 		ProductsEndpoint,
 		&request,
-		&response,
+		&HTTPResponseJSONParser{&response},
 		WithAuth(c.auth()),
 	); err != nil {
 		return nil, err
 	}
+
 	return &response, nil
 }
 
@@ -129,16 +131,18 @@ type GetProductRequest struct {
 	LocationID *int
 }
 
-func (r *GetProductRequest) applyToParams(params url.Values) {
+func (r *GetProductRequest) WriteHTTPRequest(req *http.Request) error {
+	params := req.URL.Query()
 	if r.LocationID != nil {
 		params.Add("filter.locationId", strconv.FormatInt(int64(r.ProductID), 10))
 	}
+	req.URL.RawQuery = params.Encode()
+	return nil
 }
 
 type GetProductResponse struct {
-	Product Product                `json:"data"`
-	Errors  map[string]interface{} `json:"errors"`
-	Meta    map[string]interface{} `json:"meta"`
+	Meta    `json:"meta"`
+	Product Product `json:"data"`
 }
 
 func (c *ProductsClient) GetProduct(ctx context.Context, request GetProductRequest) (*GetProductResponse, error) {
@@ -153,7 +157,7 @@ func (c *ProductsClient) GetProduct(ctx context.Context, request GetProductReque
 		http.MethodGet,
 		path,
 		&request,
-		&response,
+		&HTTPResponseJSONParser{&response},
 		WithAuth(c.auth()),
 	); err != nil {
 		return nil, err
@@ -164,6 +168,7 @@ func (c *ProductsClient) GetProduct(ctx context.Context, request GetProductReque
 type Product struct {
 	ProductID       int             `json:"productId,string"`
 	AisleLocations  []AisleLocation `json:"aisleLocations"`
+	ProductPageURI  string          `json:"productPageURI"`
 	Brand           string          `json:"brand"`
 	Categories      []string        `json:"categories"`
 	CountryOrigin   string          `json:"countryOrigin"`
@@ -228,6 +233,7 @@ type Temperature struct {
 
 type Image struct {
 	ID          string      `json:"id"`
+	Featured    bool        `json:"featured"`
 	Perspective string      `json:"perspective"`
 	Default     bool        `json:"default"`
 	Sizes       []ImageSize `json:"sizes"`
@@ -237,4 +243,8 @@ type ImageSize struct {
 	ID   string `json:"id"`
 	Size string `json:"size"`
 	URL  string `json:"url"`
+}
+
+func FormatProductID(productID int) string {
+	return fmt.Sprintf("%013d", productID)
 }

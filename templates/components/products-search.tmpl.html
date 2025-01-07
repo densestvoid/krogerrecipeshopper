@@ -1,0 +1,44 @@
+<table class="table">
+    <thead>
+        <tr>
+            <th>Product ID</th>
+            <th>Brand</th>
+            <th>Description</th>
+            <th class="text-center">Image</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .Products}}
+            <tr>
+                <td>{{.ProductID}}</td>
+                <td>{{.Brand}}</td>
+                <td>{{.Description}}</td>
+                <td class="text-center">
+                    {{range .Images}}
+                        {{if .Featured}}
+                            {{range .Sizes}}
+                                {{if eq .Size "thumbnail"}}
+                                    <img src="{{.URL}}" class="img-fluid img-thumbnail">
+                                {{end}}
+                            {{end}}
+                        {{end}}
+                    {{end}}
+                </td>
+                <td><button class="btn btn-info" hx-post="/favorites" hx-vals='{"productID": {{.ProductID}}}' hx-trigger="click" hx-swap="none">Favorite</button></td>
+            </tr>
+        {{end}}
+    </tbody>
+</table>
+{{if lt .Meta.Pagination.Next .Meta.Pagination.Total}}
+    <button
+        class="btn btn-primary"
+        hx-post="/products/search?start={{.Meta.Pagination.Next}}&limit={{.Meta.Pagination.Limit}}"
+        hx-trigger="click"
+        hx-include="[name='search']"
+        hx-target="#search-results"
+        hx-indicator=".htmx-indicator"
+    >
+        Next
+    </button>
+{{end}}
