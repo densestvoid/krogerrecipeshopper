@@ -14,7 +14,6 @@ const (
 
 type IdentityClient struct {
 	client      *krogerClient
-	environment string
 	accessToken string
 }
 
@@ -24,7 +23,7 @@ func NewIdentityClient(client *http.Client, environment, accessToken string) *Id
 			httpClient:  client,
 			environment: environment,
 		},
-		environment: PublicEnvironment,
+		accessToken: accessToken,
 	}
 }
 
@@ -33,7 +32,7 @@ func (client *IdentityClient) auth() string {
 }
 
 type GetProfileResponse struct {
-	Meta    `json:"meta:`
+	Meta    Meta    `json:"meta:`
 	Profile Profile `json:"data"`
 }
 
@@ -41,8 +40,8 @@ func (c *IdentityClient) GetProfile(ctx context.Context) (*GetProfileResponse, e
 	var token GetProfileResponse
 	if err := c.client.Do(
 		ctx,
-		http.MethodPost,
-		AccessTokenEndpoint,
+		http.MethodGet,
+		ProfileEndpoint,
 		nil,
 		&HTTPResponseJSONParser{&token},
 		WithAuth(c.auth()),

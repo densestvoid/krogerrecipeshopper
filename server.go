@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/httplog/v2"
@@ -22,20 +24,21 @@ type Config struct {
 	RedirectUrl   string
 }
 
-func LoginRedirect(config Config, scope string) func(w http.ResponseWriter, r *http.Request) {
+func LoginRedirect(config Config, scopes ...string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		scopesURIEncoded := url.QueryEscape(strings.Join(scopes, " "))
 		redirectURL := fmt.Sprintf("%s/authorize?client_id=%s&redirect_uri=%s&response_type=code&scope=%s",
 			config.OAuth2BaseURL,
 			config.ClientID,
 			config.RedirectUrl,
-			scope,
+			scopesURIEncoded,
 		)
 		http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 	}
 }
 
 func AuthenticationMiddleware(config Config) func(next http.Handler) http.Handler {
-	loginRedirect := LoginRedirect(config, kroger.ScopeCartBasicWrite)
+	loginRedirect := LoginRedirect(config, kroger.ScopeCartBasicWrite, kroger.ScopeProfileCompact)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if token, err := r.Cookie("accessToken"); err == nil && token.Value != "" && token.Valid() == nil {
@@ -50,31 +53,49 @@ func AuthenticationMiddleware(config Config) func(next http.Handler) http.Handle
 					http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 					return
 				}
-				identityClient := kroger.NewIdentityClient(http.DefaultClient, kroger.PublicEnvironment, authResp.AccessToken)
-				profileResp, err := identityClient.GetProfile(r.Context())
-				if err != nil {
-					http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
-					return
-				}
-				http.SetCookie(w, &http.Cookie{
-					Name:   "accessToken",
-					Value:  authResp.AccessToken,
-					MaxAge: authResp.ExpiresIn,
-				})
-				http.SetCookie(w, &http.Cookie{
-					Name:  "refreshToken",
-					Value: authResp.RefreshToken,
-				})
-				http.SetCookie(w, &http.Cookie{
-					Name:  "userID",
-					Value: profileResp.Profile.ID.String(),
-				})
+				SetAuthResponseCookies(r.Context(), w, authResp)
 				http.Redirect(w, r, r.RequestURI, http.StatusTemporaryRedirect)
 				return
 			}
 			loginRedirect(w, r)
 		})
 	}
+}
+
+func SetAuthResponseCookies(ctx context.Context, w http.ResponseWriter, credentials *kroger.PostTokenResponse) error {
+	identityClient := kroger.NewIdentityClient(http.DefaultClient, kroger.PublicEnvironment, credentials.AccessToken)
+	profileResp, err := identityClient.GetProfile(ctx)
+	if err != nil {
+		return fmt.Errorf("Unable to get user id: %w", err)
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:   "accessToken",
+		Value:  credentials.AccessToken,
+		MaxAge: credentials.ExpiresIn,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:  "refreshToken",
+		Value: credentials.RefreshToken,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:  "userID",
+		Value: profileResp.Profile.ID.String(),
+	})
+	return nil
+}
+
+func GetUserIDRequestCookie(r *http.Request) (uuid.UUID, error) {
+	var userID uuid.UUID
+	if userIDCookie, err := r.Cookie("userID"); err != nil {
+		return uuid.Nil, fmt.Errorf("User ID cookie not found: %w", err)
+	} else if err = userIDCookie.Valid(); err != nil {
+		return uuid.Nil, fmt.Errorf("Invalid User ID cookie: %w", err)
+	} else if userIDCookie.Value == "" {
+		return uuid.Nil, fmt.Errorf("User ID cookie empty")
+	} else if userID, err = uuid.Parse(userIDCookie.Value); err != nil {
+		return uuid.Nil, fmt.Errorf("Invalid User ID: %w", err)
+	}
+	return userID, nil
 }
 
 func NewServer(ctx context.Context, logger *slog.Logger, config Config, repo *data.Repository) http.Handler {
@@ -97,25 +118,7 @@ func NewServer(ctx context.Context, logger *slog.Logger, config Config, repo *da
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		identityClient := kroger.NewIdentityClient(http.DefaultClient, kroger.PublicEnvironment, authResp.AccessToken)
-		profileResp, err := identityClient.GetProfile(r.Context())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		http.SetCookie(w, &http.Cookie{
-			Name:   "accessToken",
-			Value:  authResp.AccessToken,
-			MaxAge: authResp.ExpiresIn,
-		})
-		http.SetCookie(w, &http.Cookie{
-			Name:  "refreshToken",
-			Value: authResp.RefreshToken,
-		})
-		http.SetCookie(w, &http.Cookie{
-			Name:  "userID",
-			Value: profileResp.Profile.ID.String(),
-		})
+		SetAuthResponseCookies(r.Context(), w, authResp)
 		http.Redirect(w, r, "/", http.StatusFound)
 	})
 
@@ -127,92 +130,9 @@ func NewServer(ctx context.Context, logger *slog.Logger, config Config, repo *da
 				return
 			}
 		})
-		r.Get("/recipes", func(w http.ResponseWriter, r *http.Request) {
-			if err := pages.Recipes().Render(w); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		})
-		r.Get("/recipes/table", func(w http.ResponseWriter, r *http.Request) {
-			recipes, err := repo.ListRecipes(r.Context())
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
 
-			if err := pages.RecipeTable(recipes).Render(w); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		})
-		r.Post("/recipes", func(w http.ResponseWriter, r *http.Request) {
-			r.ParseForm()
-
-			name := r.FormValue("name")
-			if name == "" {
-				http.Error(w, "Name is required", http.StatusBadRequest)
-				return
-			}
-
-			description := r.FormValue("description")
-			if description == "" {
-				http.Error(w, "Description is required", http.StatusBadRequest)
-				return
-			}
-
-			if idString := r.FormValue("id"); idString != "" {
-				id, err := uuid.Parse(idString)
-				if err != nil {
-					http.Error(w, "Invalid ID", http.StatusBadRequest)
-					return
-				}
-
-				if err := repo.UpdateRecipe(r.Context(), data.Recipe{
-					ID:          id,
-					UserID:      uuid.Nil,
-					Name:        name,
-					Description: description,
-				}); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-			} else {
-				_, err := repo.CreateRecipe(r.Context(), uuid.Nil, name, description)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-			}
-
-			w.Header().Add("HX-Trigger", "recipe-update")
-		})
-		r.Get("/recipes/modal", func(w http.ResponseWriter, r *http.Request) {
-			if err := pages.RecipeDetailsForm(nil).Render(w); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		})
-		r.Get("/recipes/modal/{recipeID}", func(w http.ResponseWriter, r *http.Request) {
-			recipeID := uuid.Must(uuid.Parse(chi.URLParam(r, "recipeID")))
-			recipe, err := repo.GetRecipe(r.Context(), recipeID)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			if err := pages.RecipeDetailsForm(&recipe).Render(w); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		})
-		r.Delete("/recipes/{recipeID}", func(w http.ResponseWriter, r *http.Request) {
-			recipeID := uuid.Must(uuid.Parse(chi.URLParam(r, "recipeID")))
-			if err := repo.DeleteRecipe(r.Context(), recipeID); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			w.Header().Add("HX-Trigger", "recipe-update")
-		})
+		r.Route("/recipes", NewRecipesMux(repo))
+		r.Route("/ingredients", NewIngredientMux(repo))
 	})
 
 	return mux

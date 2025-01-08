@@ -26,11 +26,11 @@ func Recipes() gomponents.Node {
 			components.ModalButton(
 				"recipe-details-modal",
 				"Add recipe",
-				"/recipes/modal",
+				"/recipes//details",
 				"#recipe-details-form",
 			),
 		),
-		components.Modal("recipe-details-modal", "Add recipe",
+		components.Modal("recipe-details-modal", "Edit recipe",
 			gomponents.Group{},
 			gomponents.Group{
 				html.Form(
@@ -48,6 +48,15 @@ func Recipes() gomponents.Node {
 					htmx.Swap("none"),
 				),
 			},
+		),
+		components.Modal("recipe-ingredients-modal", "Edit ingredients",
+			gomponents.Group{},
+			gomponents.Group{
+				html.Form(
+					html.ID("recipe-ingredients-form"),
+				),
+			},
+			gomponents.Group{},
 		),
 	})
 }
@@ -112,18 +121,9 @@ func RecipeTable(recipes []data.Recipe) gomponents.Node {
 		html.Class("table table-striped table-bordered text-center align-middle w-100"),
 		html.THead(
 			html.Tr(
-				html.Th(
-					html.Class("col-5"),
-					gomponents.Text("Name"),
-				),
-				html.Th(
-					html.Class("col-5"),
-					gomponents.Text("Description"),
-				),
-				html.Th(
-					html.Class("col-2"),
-					gomponents.Text("Actions"),
-				),
+				html.Th(gomponents.Text("Name")),
+				html.Th(gomponents.Text("Description")),
+				html.Th(gomponents.Text("Actions")),
 			),
 		),
 		html.TBody(
@@ -140,9 +140,15 @@ func RecipeRow(recipe data.Recipe) gomponents.Node {
 		html.Td(
 			components.ModalButton(
 				"recipe-details-modal",
-				"Edit",
-				fmt.Sprintf("/recipes/modal/%s", recipe.ID.String()),
+				"Edit details",
+				fmt.Sprintf("/recipes/%s/details", recipe.ID.String()),
 				"#recipe-details-form",
+			),
+			components.ModalButton(
+				"recipe-ingredients-modal",
+				"Edit ingredients",
+				fmt.Sprintf("/recipes/%s/ingredients", recipe.ID.String()),
+				"#recipe-ingredients-form",
 			),
 			html.Button(
 				html.Type("button"),

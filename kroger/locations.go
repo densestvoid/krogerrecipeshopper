@@ -118,7 +118,7 @@ func (r *GetLocationsWithLatitudeAndLongitudeRequest) geographicArea(params url.
 }
 
 type GetLocationsResponse struct {
-	Meta      `json:"meta"`
+	Meta      Meta       `json:"meta"`
 	Locations []Location `json:"data"`
 }
 
@@ -142,7 +142,7 @@ type GetLocationRequest struct {
 }
 
 type GetLocationResponse struct {
-	Meta     `json:"meta"`
+	Meta     Meta     `json:"meta"`
 	Location Location `json:"data"`
 }
 

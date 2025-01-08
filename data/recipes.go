@@ -2,6 +2,8 @@ package data
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -13,17 +15,37 @@ type Recipe struct {
 	Description string
 }
 
-func (m *Repository) GetRecipe(ctx context.Context, id uuid.UUID) (Recipe, error) {
+func (m *Repository) GetRecipe(ctx context.Context, id uuid.UUID) (*Recipe, error) {
 	row := m.db.QueryRowContext(ctx, `SELECT id, user_id, name, description FROM recipes WHERE id = $1`, id)
 	if err := row.Err(); err != nil {
-		return Recipe{}, err
+		return nil, err
 	}
 	var recipe Recipe
-	return recipe, row.Scan(&recipe.ID, &recipe.UserID, &recipe.Name, &recipe.Description)
+	return &recipe, row.Scan(&recipe.ID, &recipe.UserID, &recipe.Name, &recipe.Description)
 }
 
-func (m *Repository) ListRecipes(ctx context.Context) ([]Recipe, error) {
-	rows, err := m.db.QueryContext(ctx, `SELECT id, user_id, name, description FROM recipes`)
+type ListRecipesFilter interface {
+	listRecipoesFilter() string
+}
+
+type ListRecipesFilterByUserID struct {
+	UserID uuid.UUID
+}
+
+func (f ListRecipesFilterByUserID) listRecipoesFilter() string {
+	return fmt.Sprintf(`user_id = '%v'`, f.UserID)
+}
+
+func (m *Repository) ListRecipes(ctx context.Context, filters ...ListRecipesFilter) ([]Recipe, error) {
+	query := `SELECT id, user_id, name, description FROM recipes`
+	if filters != nil {
+		filterStrings := []string{}
+		for _, filter := range filters {
+			filterStrings = append(filterStrings, filter.listRecipoesFilter())
+		}
+		query += " WHERE " + strings.Join(filterStrings, " AND ")
+	}
+	rows, err := m.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}

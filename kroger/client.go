@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 )
@@ -131,6 +132,8 @@ func (p *HTTPResponseJSONParser) ParseHTTPResponse(resp *http.Response) error {
 	if err != nil {
 		return err
 	}
+
+	slog.Debug(string(bs))
 
 	// Resettable read buffer
 	bytesReader := bytes.NewReader(bs)
