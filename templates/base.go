@@ -1,10 +1,8 @@
-package pages
+package templates
 
 import (
 	"maragu.dev/gomponents"
 	"maragu.dev/gomponents/html"
-
-	"github.com/densestvoid/krogerrecipeshopper/templates/components"
 )
 
 func BasePage(title, baseURL string, bodyNodes gomponents.Group) gomponents.Node {
@@ -44,7 +42,7 @@ func baseBody(bodyNodes []gomponents.Node) gomponents.Node {
 	bodyNodes = append(bodyNodes)
 	return html.Body(
 		// Menu
-		components.Menu(),
+		Menu(),
 
 		// Custom page content
 		gomponents.Group(bodyNodes),

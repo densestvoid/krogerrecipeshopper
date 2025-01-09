@@ -1,4 +1,4 @@
-package pages
+package templates
 
 import "maragu.dev/gomponents"
 

@@ -14,7 +14,7 @@ import (
 
 	"github.com/densestvoid/krogerrecipeshopper/data"
 	"github.com/densestvoid/krogerrecipeshopper/kroger"
-	"github.com/densestvoid/krogerrecipeshopper/templates/pages"
+	"github.com/densestvoid/krogerrecipeshopper/templates"
 )
 
 type Config struct {
@@ -50,7 +50,7 @@ func AuthenticationMiddleware(config Config) func(next http.Handler) http.Handle
 					RefreshToken: token.Value,
 				})
 				if err != nil {
-					http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+					loginRedirect(w, r)
 					return
 				}
 				SetAuthResponseCookies(r.Context(), w, authResp)
@@ -125,7 +125,7 @@ func NewServer(ctx context.Context, logger *slog.Logger, config Config, repo *da
 	mux.Route("/", func(r chi.Router) {
 		r.Use(AuthenticationMiddleware(config))
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			if err := pages.DashboardPage().Render(w); err != nil {
+			if err := templates.DashboardPage().Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}

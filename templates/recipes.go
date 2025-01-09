@@ -1,4 +1,4 @@
-package pages
+package templates
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	"maragu.dev/gomponents/html"
 
 	"github.com/densestvoid/krogerrecipeshopper/data"
-	"github.com/densestvoid/krogerrecipeshopper/templates/components"
 )
 
 func Recipes() gomponents.Node {
@@ -23,14 +22,14 @@ func Recipes() gomponents.Node {
 				htmx.Swap("innerHTML"),
 				htmx.Trigger("load,recipe-update from:body"),
 			),
-			components.ModalButton(
+			ModalButton(
 				"recipe-details-modal",
 				"Add recipe",
 				"/recipes//details",
 				"#recipe-details-form",
 			),
 		),
-		components.Modal("recipe-details-modal", "Edit recipe",
+		Modal("recipe-details-modal", "Edit recipe",
 			gomponents.Group{},
 			gomponents.Group{
 				html.Form(
@@ -48,15 +47,6 @@ func Recipes() gomponents.Node {
 					htmx.Swap("none"),
 				),
 			},
-		),
-		components.Modal("recipe-ingredients-modal", "Edit ingredients",
-			gomponents.Group{},
-			gomponents.Group{
-				html.Form(
-					html.ID("recipe-ingredients-form"),
-				),
-			},
-			gomponents.Group{},
 		),
 	})
 }
@@ -138,23 +128,25 @@ func RecipeRow(recipe data.Recipe) gomponents.Node {
 		html.Td(gomponents.Text(recipe.Name)),
 		html.Td(gomponents.Text(recipe.Description)),
 		html.Td(
-			components.ModalButton(
+			ModalButton(
 				"recipe-details-modal",
 				"Edit details",
 				fmt.Sprintf("/recipes/%s/details", recipe.ID.String()),
 				"#recipe-details-form",
 			),
-			components.ModalButton(
-				"recipe-ingredients-modal",
-				"Edit ingredients",
-				fmt.Sprintf("/recipes/%s/ingredients", recipe.ID.String()),
-				"#recipe-ingredients-form",
+			html.A(
+				html.Href(fmt.Sprintf("/recipes/%v/ingredients", recipe.ID)),
+				html.Button(
+					html.Type("button"),
+					html.Class("btn btn-primary"),
+					gomponents.Text("Edit ingredients"),
+				),
 			),
 			html.Button(
 				html.Type("button"),
 				html.Class("btn btn-danger"),
 				gomponents.Text("Delete"),
-				htmx.Delete(fmt.Sprintf("/recipes/%s", recipe.ID)),
+				htmx.Delete(fmt.Sprintf("/recipes/%v", recipe.ID)),
 				htmx.Swap("none"),
 			),
 		),

@@ -12,8 +12,8 @@ type Ingredient struct {
 	Quantity  int // represents a percentage of the total product
 }
 
-func (m *Repository) GetIngredients(ctx context.Context, id uuid.UUID) ([]Ingredient, error) {
-	rows, err := m.db.QueryContext(ctx, `SELECT productID, recipeID, quantity FROM ingredients WHERE id = $1`, id)
+func (m *Repository) ListIngredients(ctx context.Context, recipeID uuid.UUID) ([]Ingredient, error) {
+	rows, err := m.db.QueryContext(ctx, `SELECT product_id, recipe_id, quantity FROM ingredients WHERE recipe_id = $1`, recipeID)
 	if err != nil {
 		return nil, err
 	}

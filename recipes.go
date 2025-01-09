@@ -7,13 +7,13 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/densestvoid/krogerrecipeshopper/data"
-	"github.com/densestvoid/krogerrecipeshopper/templates/pages"
+	"github.com/densestvoid/krogerrecipeshopper/templates"
 )
 
 func NewRecipesMux(repo *data.Repository) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			if err := pages.Recipes().Render(w); err != nil {
+			if err := templates.Recipes().Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -78,7 +78,7 @@ func NewRecipesMux(repo *data.Repository) func(chi.Router) {
 				return
 			}
 
-			if err := pages.RecipeTable(recipes).Render(w); err != nil {
+			if err := templates.RecipeTable(recipes).Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -94,7 +94,7 @@ func NewRecipesMux(repo *data.Repository) func(chi.Router) {
 					}
 				}
 
-				if err := pages.RecipeDetailsForm(recipe).Render(w); err != nil {
+				if err := templates.RecipeDetailsForm(recipe).Render(w); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
@@ -107,6 +107,7 @@ func NewRecipesMux(repo *data.Repository) func(chi.Router) {
 				}
 				w.Header().Add("HX-Trigger", "recipe-update")
 			})
+			r.Route("/ingredients", NewIngredientMux(repo))
 		})
 	}
 }

@@ -92,15 +92,11 @@ func (r GetProductsByItemAndAvailabilityFilters) getProductsFilters(params url.V
 }
 
 type GetProductsByIDsFilter struct {
-	ProductIDs []int // comma separated
+	ProductIDs []string // comma separated
 }
 
 func (r *GetProductsByIDsFilter) getProductsFilters(params url.Values) {
-	var productIDs []string
-	for _, id := range r.ProductIDs {
-		productIDs = append(productIDs, fmt.Sprintf("%013d", id))
-	}
-	params.Add("filter.productId", strings.Join(productIDs, ","))
+	params.Add("filter.productId", strings.Join(r.ProductIDs, ","))
 }
 
 type GetProductsResponse struct {
@@ -164,7 +160,7 @@ func (c *ProductsClient) GetProduct(ctx context.Context, request GetProductReque
 }
 
 type Product struct {
-	ProductID       int             `json:"productId,string"`
+	ProductID       string          `json:"productId"`
 	AisleLocations  []AisleLocation `json:"aisleLocations"`
 	ProductPageURI  string          `json:"productPageURI"`
 	Brand           string          `json:"brand"`
