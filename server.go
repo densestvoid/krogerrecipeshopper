@@ -131,8 +131,8 @@ func NewServer(ctx context.Context, logger *slog.Logger, config Config, repo *da
 			}
 		})
 
-		r.Route("/recipes", NewRecipesMux(repo))
-		r.Route("/ingredients", NewIngredientMux(repo))
+		r.Route("/recipes", NewRecipesMux(config, repo))
+		r.Route("/products", NewProductsMux(config))
 	})
 
 	return mux

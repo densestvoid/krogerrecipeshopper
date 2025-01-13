@@ -17,6 +17,7 @@ func ModalButton(id, text, contentURL, contentTarget string) gomponents.Node {
 		gomponents.Text(text),
 		htmx.Get(contentURL),
 		htmx.Target(contentTarget),
+		htmx.Trigger("click"),
 	)
 }
 

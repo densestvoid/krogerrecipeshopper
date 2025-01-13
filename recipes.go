@@ -10,7 +10,7 @@ import (
 	"github.com/densestvoid/krogerrecipeshopper/templates"
 )
 
-func NewRecipesMux(repo *data.Repository) func(chi.Router) {
+func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			if err := templates.Recipes().Render(w); err != nil {
@@ -107,7 +107,7 @@ func NewRecipesMux(repo *data.Repository) func(chi.Router) {
 				}
 				w.Header().Add("HX-Trigger", "recipe-update")
 			})
-			r.Route("/ingredients", NewIngredientMux(repo))
+			r.Route("/ingredients", NewIngredientMux(config, repo))
 		})
 	}
 }

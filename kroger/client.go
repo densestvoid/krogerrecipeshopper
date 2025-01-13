@@ -150,9 +150,9 @@ func (p *HTTPResponseJSONParser) ParseHTTPResponse(resp *http.Response) error {
 	bytesReader.Seek(0, io.SeekStart)
 
 	// Check for API error
-	var apiError errors
+	var apiError APIError
 	if err := decoder.Decode(&apiError); err == nil {
-		return &apiError.Errors
+		return &apiError
 	}
 
 	// Reset
