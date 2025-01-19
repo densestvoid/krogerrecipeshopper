@@ -8,10 +8,10 @@ import (
 	"maragu.dev/gomponents/html"
 )
 
-func ModalButton(id, text, contentURL, contentTarget string) gomponents.Node {
+func ModalButton(id, text, classes, contentURL, contentTarget string) gomponents.Node {
 	return html.Button(
 		html.Type("button"),
-		html.Class("btn btn-secondary"),
+		html.Class(fmt.Sprintf("btn btn-secondary %s", classes)),
 		html.Data("bs-toggle", "modal"),
 		html.Data("bs-target", fmt.Sprintf("#%s", id)),
 		gomponents.Text(text),

@@ -42,7 +42,6 @@ func baseHead(title, baseURL string) gomponents.Node {
 }
 
 func baseBody(bodyNodes []gomponents.Node) gomponents.Node {
-	bodyNodes = append(bodyNodes)
 	return html.Body(
 		// Menu
 		Menu(),

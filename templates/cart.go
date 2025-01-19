@@ -120,6 +120,7 @@ func CartProductRow(cartProduct CartProduct) gomponents.Node {
 			ModalButton(
 				"cart-product-details-modal",
 				"Edit details",
+				"",
 				fmt.Sprintf("/cart/%v", cartProduct.ProductID),
 				"#cart-product-details-form",
 			),

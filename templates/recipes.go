@@ -25,6 +25,7 @@ func Recipes() gomponents.Node {
 			ModalButton(
 				"recipe-details-modal",
 				"Add recipe",
+				"",
 				"/recipes//details",
 				"#recipe-details-form",
 			),
@@ -112,7 +113,11 @@ func RecipeTable(recipes []data.Recipe) gomponents.Node {
 		html.THead(
 			html.Tr(
 				html.Th(gomponents.Text("Name")),
-				html.Th(gomponents.Text("Description")),
+				html.Th(
+					// Hide if the screen is small
+					html.Class("d-none d-sm-table-cell"),
+					gomponents.Text("Description"),
+				),
 				html.Th(gomponents.Text("Actions")),
 			),
 		),
@@ -126,35 +131,57 @@ func RecipeTable(recipes []data.Recipe) gomponents.Node {
 func RecipeRow(recipe data.Recipe) gomponents.Node {
 	return html.Tr(
 		html.Td(gomponents.Text(recipe.Name)),
-		html.Td(gomponents.Text(recipe.Description)),
 		html.Td(
-			html.Button(
-				html.Type("button"),
-				html.Class("btn btn-primary"),
-				gomponents.Text("Add to cart"),
-				htmx.Post(fmt.Sprintf("/cart/recipe/%v", recipe.ID)),
-				htmx.Swap("none"),
-			),
-			ModalButton(
-				"recipe-details-modal",
-				"Edit details",
-				fmt.Sprintf("/recipes/%s/details", recipe.ID.String()),
-				"#recipe-details-form",
-			),
-			html.A(
-				html.Href(fmt.Sprintf("/recipes/%v/ingredients", recipe.ID)),
+			// Hide if the screen is small
+			html.Class("d-none d-sm-table-cell"),
+			gomponents.Text(recipe.Description)),
+		html.Td(
+			html.Div(
+				html.Class("btn-group"),
 				html.Button(
 					html.Type("button"),
-					html.Class("btn btn-secondary"),
-					gomponents.Text("Edit ingredients"),
+					html.Class("btn btn-primary"),
+					gomponents.Text("Add to cart"),
+					htmx.Post(fmt.Sprintf("/cart/recipe/%v", recipe.ID)),
+					htmx.Swap("none"),
 				),
-			),
-			html.Button(
-				html.Type("button"),
-				html.Class("btn btn-danger"),
-				gomponents.Text("Delete"),
-				htmx.Delete(fmt.Sprintf("/recipes/%v", recipe.ID)),
-				htmx.Swap("none"),
+				html.Button(
+					html.Type("button"),
+					html.Class("btn btn-primary dropdown-toggle dropdown-toggle-split"),
+					html.Data("bs-toggle", "dropdown"),
+				),
+				html.Ul(
+					html.Class("dropdown-menu"),
+					html.Li(
+						ModalButton(
+							"recipe-details-modal",
+							"Edit details",
+							"w-100",
+							fmt.Sprintf("/recipes/%s/details", recipe.ID.String()),
+							"#recipe-details-form",
+						),
+					),
+					html.Li(
+						html.A(
+							html.Href(fmt.Sprintf("/recipes/%v/ingredients", recipe.ID)),
+							html.Button(
+								html.Type("button"),
+								html.Class("btn btn-secondary w-100"),
+								gomponents.Text("Edit ingredients"),
+							),
+						),
+					),
+					html.Li(html.Hr(html.Class("dropdown-divider"))),
+					html.Li(
+						html.Button(
+							html.Type("button"),
+							html.Class("btn btn-danger w-100"),
+							gomponents.Text("Delete"),
+							htmx.Delete(fmt.Sprintf("/recipes/%v", recipe.ID)),
+							htmx.Swap("none"),
+						),
+					),
+				),
 			),
 		),
 	)

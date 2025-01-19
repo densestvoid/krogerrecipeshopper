@@ -26,6 +26,7 @@ func Ingredients(recipe *data.Recipe) gomponents.Node {
 			ModalButton(
 				"ingredient-details-modal",
 				"Add ingredient",
+				"",
 				fmt.Sprintf("/recipes/%v/ingredients//details", recipe.ID),
 				"#ingredient-details-form",
 			),
@@ -194,6 +195,7 @@ func IngredientRow(ingredient Ingredient) gomponents.Node {
 			ModalButton(
 				"ingredient-details-modal",
 				"Edit details",
+				"",
 				fmt.Sprintf("/recipes/%v/ingredients/%s/details", ingredient.RecipeID, ingredient.ProductID),
 				"#ingredient-details-form",
 			),
