@@ -23,7 +23,6 @@ const (
 
 type ProductsClient struct {
 	client      *krogerClient
-	environment string
 	accessToken string
 }
 
@@ -33,7 +32,6 @@ func NewProductsClient(client *http.Client, environment, accessToken string) *Pr
 			httpClient:  client,
 			environment: environment,
 		},
-		environment: environment,
 		accessToken: accessToken,
 	}
 }
@@ -94,20 +92,16 @@ func (r GetProductsByItemAndAvailabilityFilters) getProductsFilters(params url.V
 }
 
 type GetProductsByIDsFilter struct {
-	ProductIDs []int // comma separated
+	ProductIDs []string // comma separated
 }
 
 func (r *GetProductsByIDsFilter) getProductsFilters(params url.Values) {
-	var productIDs []string
-	for _, id := range r.ProductIDs {
-		productIDs = append(productIDs, fmt.Sprintf("%013d", id))
-	}
-	params.Add("filter.productId", strings.Join(productIDs, ","))
+	params.Add("filter.productId", strings.Join(r.ProductIDs, ","))
 }
 
 type GetProductsResponse struct {
-	Products []Product `json:"data"`
 	Meta     Meta      `json:"meta"`
+	Products []Product `json:"data"`
 }
 
 func (c *ProductsClient) GetProducts(ctx context.Context, request GetProductsRequest) (*GetProductsResponse, error) {
@@ -141,7 +135,7 @@ func (r *GetProductRequest) WriteHTTPRequest(req *http.Request) error {
 }
 
 type GetProductResponse struct {
-	Meta    `json:"meta"`
+	Meta    Meta    `json:"meta"`
 	Product Product `json:"data"`
 }
 
@@ -166,7 +160,7 @@ func (c *ProductsClient) GetProduct(ctx context.Context, request GetProductReque
 }
 
 type Product struct {
-	ProductID       int             `json:"productId,string"`
+	ProductID       string          `json:"productId"`
 	AisleLocations  []AisleLocation `json:"aisleLocations"`
 	ProductPageURI  string          `json:"productPageURI"`
 	Brand           string          `json:"brand"`

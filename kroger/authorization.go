@@ -19,7 +19,10 @@ const (
 	GrantTypeRefreshToken      = "refresh_token"
 
 	ScopeProductCompact = "product.compact"
+	ScopeProfileCompact = "profile.compact"
 	ScopeCartBasicWrite = "cart.basic:write"
+
+	OAuth2BaseURL = "https://api.kroger.com/v1/connect/oauth2"
 )
 
 type AuthorizationClient struct {
@@ -83,7 +86,7 @@ type RefreshToken struct {
 
 func (c RefreshToken) credentials(values url.Values) {
 	values.Add("grant_type", GrantTypeRefreshToken)
-	values.Add("refresh_token", c.RefreshToken)
+	values.Add("refresh_token", url.QueryEscape(c.RefreshToken))
 }
 
 type PostTokenResponse struct {

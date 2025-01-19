@@ -25,4 +25,5 @@ go.work.sum
 cmd/recipe/test-db
 
 # VSCode artifacts
+.vscode
 **.DS_Store

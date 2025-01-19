@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 )
@@ -48,8 +49,10 @@ func (c *krogerClient) Do(ctx context.Context, method string, endpoint string, r
 		return err
 	}
 
-	if err := request.WriteHTTPRequest(httpReq); err != nil {
-		return err
+	if request != nil {
+		if err := request.WriteHTTPRequest(httpReq); err != nil {
+			return err
+		}
 	}
 
 	values := httpReq.URL.Query()
@@ -64,7 +67,10 @@ func (c *krogerClient) Do(ctx context.Context, method string, endpoint string, r
 	}
 	defer resp.Body.Close()
 
-	return response.ParseHTTPResponse(resp)
+	if response != nil {
+		return response.ParseHTTPResponse(resp)
+	}
+	return nil
 }
 
 type HTTPResponseBytesParser struct {
@@ -130,6 +136,8 @@ func (p *HTTPResponseJSONParser) ParseHTTPResponse(resp *http.Response) error {
 		return err
 	}
 
+	slog.Debug(string(bs))
+
 	// Resettable read buffer
 	bytesReader := bytes.NewReader(bs)
 	decoder := json.NewDecoder(bytesReader)
@@ -145,9 +153,9 @@ func (p *HTTPResponseJSONParser) ParseHTTPResponse(resp *http.Response) error {
 	bytesReader.Seek(0, io.SeekStart)
 
 	// Check for API error
-	var apiError errors
+	var apiError APIError
 	if err := decoder.Decode(&apiError); err == nil {
-		return &apiError.Errors
+		return &apiError
 	}
 
 	// Reset
