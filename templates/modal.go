@@ -11,7 +11,7 @@ import (
 func ModalButton(id, text, contentURL, contentTarget string) gomponents.Node {
 	return html.Button(
 		html.Type("button"),
-		html.Class("btn btn-primary"),
+		html.Class("btn btn-secondary"),
 		html.Data("bs-toggle", "modal"),
 		html.Data("bs-target", fmt.Sprintf("#%s", id)),
 		gomponents.Text(text),
@@ -32,7 +32,7 @@ func Modal(
 		html.Class("modal"),
 		html.ID(id),
 		html.Div(
-			html.Class("modal-dialog"),
+			html.Class("modal-dialog modal-lg"),
 			html.Div(
 				html.Class("modal-content"),
 				html.Div(

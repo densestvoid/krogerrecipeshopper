@@ -1,0 +1,245 @@
+package server
+
+import (
+	"math"
+	"net/http"
+	"strconv"
+
+	"github.com/densestvoid/krogerrecipeshopper/data"
+	"github.com/densestvoid/krogerrecipeshopper/kroger"
+	"github.com/densestvoid/krogerrecipeshopper/templates"
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+)
+
+const KrogerCartURL = "https://www.kroger.com/shopping/cart"
+
+func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
+	return func(r chi.Router) {
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			if err := templates.Cart().Render(w); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		})
+
+		r.Get("/table", func(w http.ResponseWriter, r *http.Request) {
+			userID, err := GetUserIDRequestCookie(r)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
+			dataCartProducts, err := repo.ListCartProducts(r.Context(), userID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			// hyrdate ingredients with product info
+			productIDs := []string{}
+			for _, cartProduct := range dataCartProducts {
+				productIDs = append(productIDs, cartProduct.ProductID)
+			}
+
+			cartProducts := []templates.CartProduct{}
+			if len(productIDs) != 0 {
+				authClient := kroger.NewAuthorizationClient(http.DefaultClient, kroger.PublicEnvironment, config.ClientID, config.ClientSecret)
+				authResp, err := authClient.PostToken(r.Context(), kroger.ClientCredentials{
+					Scope: kroger.ScopeProductCompact,
+				})
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				productsClient := kroger.NewProductsClient(http.DefaultClient, kroger.PublicEnvironment, authResp.AccessToken)
+
+				productsResp, err := productsClient.GetProducts(r.Context(), kroger.GetProductsRequest{
+					Filters: &kroger.GetProductsByIDsFilter{
+						ProductIDs: productIDs,
+					},
+					LocationID: nil,
+				})
+
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				for _, cartProduct := range dataCartProducts {
+					for _, product := range productsResp.Products {
+						if cartProduct.ProductID == product.ProductID {
+							var imageURL string
+						IMAGELOOP:
+							for _, image := range product.Images {
+								if image.Featured {
+									for _, size := range image.Sizes {
+										if size.Size == "small" {
+											imageURL = size.URL
+											break IMAGELOOP
+										}
+									}
+								}
+							}
+							var size string
+							for _, item := range product.Items {
+								size = item.Size
+								break
+							}
+							cartProducts = append(cartProducts, templates.CartProduct{
+								ProductID:   product.ProductID,
+								Brand:       product.Brand,
+								Description: product.Description,
+								Size:        size,
+								ImageURL:    imageURL,
+								Quantity:    cartProduct.Quantity,
+							})
+							break
+						}
+					}
+				}
+			}
+
+			if err := templates.CartTable(cartProducts).Render(w); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		})
+
+		r.Post("/recipe/{recipeID}", func(w http.ResponseWriter, r *http.Request) {
+			userID, err := GetUserIDRequestCookie(r)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
+			recipeID := uuid.MustParse(chi.URLParam(r, "recipeID"))
+			ingredients, err := repo.ListIngredients(r.Context(), recipeID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			for _, ingredient := range ingredients {
+				if err := repo.AddCartProduct(r.Context(), userID, ingredient.ProductID, ingredient.Quantity); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+			}
+
+			w.WriteHeader(http.StatusOK)
+		})
+
+		// Set product quantity in users cart
+		r.Put("/product", func(w http.ResponseWriter, r *http.Request) {
+			userID, err := GetUserIDRequestCookie(r)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
+			r.ParseForm()
+
+			productID := r.FormValue("productID")
+			quantityFloat, err := strconv.ParseFloat(r.FormValue("quantity"), 32)
+			if err != nil || quantityFloat <= 0 {
+				http.Error(w, "Invalid quantity", http.StatusBadRequest)
+				return
+			}
+			quantityPercent := int(quantityFloat * 100)
+
+			if err := repo.SetCartProduct(r.Context(), userID, productID, quantityPercent); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Add("HX-Trigger", "cart-update")
+			w.WriteHeader(http.StatusOK)
+		})
+
+		r.Route("/{productID}", func(r chi.Router) {
+			// Get cart product details
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				userID, err := GetUserIDRequestCookie(r)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusUnauthorized)
+					return
+				}
+				productID := chi.URLParam(r, "productID")
+
+				cartProduct, err := repo.GetCartProduct(r.Context(), userID, productID)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				if err := templates.CartProductDetailsForm(cartProduct).Render(w); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+			})
+
+			// Remove product from users cart
+			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
+				userID, err := GetUserIDRequestCookie(r)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusUnauthorized)
+					return
+				}
+				productID := chi.URLParam(r, "productID")
+
+				if err := repo.RemoveCarProduct(r.Context(), userID, productID); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				w.Header().Add("HX-Trigger", "cart-update")
+				w.WriteHeader(http.StatusOK)
+			})
+		})
+
+		r.Post("/checkout", func(w http.ResponseWriter, r *http.Request) {
+			accessTokenCookie, err := r.Cookie("accessToken")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return
+			}
+			cartClient := kroger.NewCartClient(http.DefaultClient, kroger.PublicEnvironment, accessTokenCookie.Value)
+
+			userID, err := GetUserIDRequestCookie(r)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
+			cartProducts, err := repo.ListCartProducts(r.Context(), userID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			var addProducts []kroger.PutAddProduct
+			for _, cartProduct := range cartProducts {
+				addProducts = append(addProducts, kroger.PutAddProduct{
+					ProductID: cartProduct.ProductID,
+					Quantity:  int(math.Ceil(float64(cartProduct.Quantity) / 100)),
+					Modality:  kroger.ModalityPickup,
+				})
+			}
+
+			if err := cartClient.PutAdd(r.Context(), kroger.PutAddRequest{
+				Items: addProducts,
+			}); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			if err := repo.ClearCartProducts(r.Context(), userID); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Add("HX-Trigger", "cart-update")
+			w.WriteHeader(http.StatusOK)
+		})
+	}
+}

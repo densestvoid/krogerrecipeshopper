@@ -54,7 +54,6 @@ func Ingredients(recipe *data.Recipe) gomponents.Node {
 
 func IngredientDetailsForm(ingredient *data.Ingredient) gomponents.Node {
 	if ingredient != nil {
-		fmt.Println(ingredient.Quantity)
 		return gomponents.Group{
 			html.Input(
 				html.Type("hidden"),
@@ -113,6 +112,7 @@ func ProductsSearchTable(products []Product) gomponents.Node {
 				html.Th(gomponents.Text("Image")),
 				html.Th(gomponents.Text("Brand")),
 				html.Th(gomponents.Text("Description")),
+				html.Th(gomponents.Text("Size")),
 			),
 		),
 		html.TBody(productRows),
@@ -136,6 +136,7 @@ func ProductSearchRow(product Product) gomponents.Node {
 		),
 		html.Td(gomponents.Text(product.Brand)),
 		html.Td(gomponents.Text(product.Description)),
+		html.Td(gomponents.Text(product.Size)),
 	)
 }
 
@@ -143,6 +144,7 @@ type Product struct {
 	ProductID   string
 	Brand       string
 	Description string
+	Size        string
 	ImageURL    string
 }
 
@@ -164,6 +166,7 @@ func IngredientsTable(ingredients []Ingredient) gomponents.Node {
 				html.Th(gomponents.Text("Image")),
 				html.Th(gomponents.Text("Brand")),
 				html.Th(gomponents.Text("Description")),
+				html.Th(gomponents.Text("Size")),
 				html.Th(gomponents.Text("Quantity")),
 				html.Th(gomponents.Text("Actions")),
 			),
@@ -185,6 +188,7 @@ func IngredientRow(ingredient Ingredient) gomponents.Node {
 		),
 		html.Td(gomponents.Text(ingredient.Brand)),
 		html.Td(gomponents.Text(ingredient.Description)),
+		html.Td(gomponents.Text(ingredient.Size)),
 		html.Td(gomponents.Text(fmt.Sprintf("%.2f", float32(ingredient.Quantity)/100))),
 		html.Td(
 			ModalButton(

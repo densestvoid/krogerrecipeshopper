@@ -128,6 +128,13 @@ func RecipeRow(recipe data.Recipe) gomponents.Node {
 		html.Td(gomponents.Text(recipe.Name)),
 		html.Td(gomponents.Text(recipe.Description)),
 		html.Td(
+			html.Button(
+				html.Type("button"),
+				html.Class("btn btn-primary"),
+				gomponents.Text("Add to cart"),
+				htmx.Post(fmt.Sprintf("/cart/recipe/%v", recipe.ID)),
+				htmx.Swap("none"),
+			),
 			ModalButton(
 				"recipe-details-modal",
 				"Edit details",
@@ -138,7 +145,7 @@ func RecipeRow(recipe data.Recipe) gomponents.Node {
 				html.Href(fmt.Sprintf("/recipes/%v/ingredients", recipe.ID)),
 				html.Button(
 					html.Type("button"),
-					html.Class("btn btn-primary"),
+					html.Class("btn btn-secondary"),
 					gomponents.Text("Edit ingredients"),
 				),
 			),

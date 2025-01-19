@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS ingredients (
-    product_id VARCHAR(13),
+    product_id VARCHAR(13) NOT NULL,
     recipe_id UUID REFERENCES recipes(id),
     quantity INTEGER NOT NULL
 );

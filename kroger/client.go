@@ -67,7 +67,10 @@ func (c *krogerClient) Do(ctx context.Context, method string, endpoint string, r
 	}
 	defer resp.Body.Close()
 
-	return response.ParseHTTPResponse(resp)
+	if response != nil {
+		return response.ParseHTTPResponse(resp)
+	}
+	return nil
 }
 
 type HTTPResponseBytesParser struct {

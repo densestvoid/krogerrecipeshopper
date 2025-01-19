@@ -20,7 +20,10 @@ func baseHead(title, baseURL string) gomponents.Node {
 	return html.Head(
 		html.Title(title),
 		html.Meta(html.Charset("UTF-8")),
-		html.Meta(html.Name("viewport")),
+		html.Meta(
+			html.Name("viewport"),
+			html.Content("width=device-width, initial-scale=1, user-scalable=no"),
+		),
 		// Bootstrap CSS
 		html.Link(
 			html.Href("https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"),

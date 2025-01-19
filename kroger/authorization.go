@@ -21,6 +21,8 @@ const (
 	ScopeProductCompact = "product.compact"
 	ScopeProfileCompact = "profile.compact"
 	ScopeCartBasicWrite = "cart.basic:write"
+
+	OAuth2BaseURL = "https://api.kroger.com/v1/connect/oauth2"
 )
 
 type AuthorizationClient struct {
