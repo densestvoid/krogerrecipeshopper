@@ -1,0 +1,23 @@
+# https://taskfile.dev
+
+version: '3'
+
+tasks:
+  build:
+    dir: cmd/kroger-recipes
+    cmds:
+      - go build -ldflags "-w"
+    env:
+      GOARCH: amd64
+      GOOS: linux
+
+  deploy:
+    dir: cmd/kroger-recipes
+    dotenv: ['{{.ROOT_DIR}}/.env']
+    cmds:
+      - scp -i $SSHKEY kroger-recipes $USERNAME@$HOST:$BINPATH
+
+  ssh:
+    dotenv: ['{{.ROOT_DIR}}/.env']
+    cmds:
+      - ssh -i $SSHKEY $USERNAME@$HOST

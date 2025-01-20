@@ -27,3 +27,6 @@ cmd/recipe/test-db
 # VSCode artifacts
 .vscode
 **.DS_Store
+
+# Build artifacts
+cmd/kroger-recipes/kroger-recipes

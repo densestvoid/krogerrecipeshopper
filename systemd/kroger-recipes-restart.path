@@ -1,0 +1,5 @@
+[Path]
+PathChanged=/opt/kroger-recipes/server
+
+[Install]
+WantedBy=multi-user.target

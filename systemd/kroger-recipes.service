@@ -1,0 +1,12 @@
+[Unit]
+Description=kroger-recipes-server
+After=network.target
+
+[Service]
+Type=exec
+Restart=always
+WorkingDirectory=/opt/kroger-recipes
+ExecStart=/opt/kroger-recipes/server -c /root/kroger-recipes.json serve
+
+[Install]
+WantedBy=multi-user.target
