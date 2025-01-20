@@ -49,7 +49,7 @@ func baseBody(bodyNodes []gomponents.Node) gomponents.Node {
 
 		// HTMX response toast messages
 		html.Div(
-			html.Class("position-absolute top-0 start-50 translate-middle-x"),
+			html.Class("fixed-top top-0 start-50 translate-middle-x"),
 			html.Div(
 				html.ID("alerts"),
 				html.Class("d-flex flex-column justify-content-center"),
