@@ -75,14 +75,17 @@ func SetAuthResponseCookies(ctx context.Context, w http.ResponseWriter, credenti
 		Name:   "accessToken",
 		Value:  credentials.AccessToken,
 		MaxAge: credentials.ExpiresIn,
+		Secure: true,
 	})
 	http.SetCookie(w, &http.Cookie{
-		Name:  "refreshToken",
-		Value: credentials.RefreshToken,
+		Name:   "refreshToken",
+		Value:  credentials.RefreshToken,
+		Secure: true,
 	})
 	http.SetCookie(w, &http.Cookie{
-		Name:  "userID",
-		Value: profileResp.Profile.ID.String(),
+		Name:   "userID",
+		Value:  profileResp.Profile.ID.String(),
+		Secure: true,
 	})
 	return nil
 }
@@ -140,4 +143,11 @@ func New(ctx context.Context, logger *slog.Logger, config Config, repo *data.Rep
 	})
 
 	return mux
+}
+
+func Error(w http.ResponseWriter, message string, err error, statusCode int) {
+	slog.Error(message, "error", err)
+	if err := templates.Alert("Failed", "alert-danger").Render(w); err != nil {
+		http.Error(w, err.Error(), statusCode)
+	}
 }

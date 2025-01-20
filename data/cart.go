@@ -55,7 +55,7 @@ func (r *Repository) SetCartProduct(ctx context.Context, userID uuid.UUID, produ
 	return err
 }
 
-func (r *Repository) RemoveCarProduct(ctx context.Context, userID uuid.UUID, productID string) error {
+func (r *Repository) RemoveCartProduct(ctx context.Context, userID uuid.UUID, productID string) error {
 	_, err := r.db.ExecContext(ctx, `DELETE FROM cart_products WHERE user_id = $1 and product_id = $2;`, userID, productID)
 	return err
 }

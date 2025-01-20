@@ -21,7 +21,7 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
 			userID, err := GetUserIDRequestCookie(r)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusUnauthorized)
+				Error(w, "Getting user id", err, http.StatusUnauthorized)
 				return
 			}
 
@@ -29,20 +29,20 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 
 			name := r.FormValue("name")
 			if name == "" {
-				http.Error(w, "Name is required", http.StatusBadRequest)
+				Error(w, "Name missing", nil, http.StatusBadRequest)
 				return
 			}
 
 			description := r.FormValue("description")
 			if description == "" {
-				http.Error(w, "Description is required", http.StatusBadRequest)
+				Error(w, "Description missing", nil, http.StatusBadRequest)
 				return
 			}
 
 			if r.PostForm.Has("id") {
 				id, err := uuid.Parse(r.PostForm.Get("id"))
 				if err != nil {
-					http.Error(w, "Invalid ID", http.StatusBadRequest)
+					Error(w, "Parsing recipe id", err, http.StatusBadRequest)
 					return
 				}
 
@@ -52,18 +52,21 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 					Name:        name,
 					Description: description,
 				}); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					Error(w, "Updating recipe", err, http.StatusInternalServerError)
 					return
 				}
 			} else {
 				_, err := repo.CreateRecipe(r.Context(), userID, name, description)
 				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					Error(w, "Creating recipe", err, http.StatusInternalServerError)
 					return
 				}
 			}
 
 			w.Header().Add("HX-Trigger", "recipe-update")
+			if err := templates.Alert("Success", "alert-success").Render(w); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
 		})
 		r.Get("/table", func(w http.ResponseWriter, r *http.Request) {
 			userID, err := GetUserIDRequestCookie(r)
@@ -102,10 +105,14 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
 				recipeID := uuid.Must(uuid.Parse(chi.URLParam(r, "recipeID")))
 				if err := repo.DeleteRecipe(r.Context(), recipeID); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					Error(w, "Deleting recipe", err, http.StatusInternalServerError)
 					return
 				}
+
 				w.Header().Add("HX-Trigger", "recipe-update")
+				if err := templates.Alert("Success", "alert-success").Render(w); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
 			})
 			r.Route("/ingredients", NewIngredientMux(config, repo))
 		})

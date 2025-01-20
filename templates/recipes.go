@@ -179,6 +179,7 @@ func RecipeRow(recipe data.Recipe) gomponents.Node {
 							gomponents.Text("Delete"),
 							htmx.Delete(fmt.Sprintf("/recipes/%v", recipe.ID)),
 							htmx.Swap("none"),
+							htmx.Confirm("Are you sure you want to delete thi recipe?"),
 						),
 					),
 				),

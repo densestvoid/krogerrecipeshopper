@@ -36,7 +36,7 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 			productID := r.FormValue("productID")
 			quantityFloat, err := strconv.ParseFloat(r.FormValue("quantity"), 32)
 			if err != nil || quantityFloat <= 0 {
-				http.Error(w, "Invalid quantity", http.StatusBadRequest)
+				Error(w, "Invalid quantity", err, http.StatusBadRequest)
 				return
 			}
 			quantityPercent := int(quantityFloat * 100)
@@ -44,18 +44,21 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 			if _, err := repo.GetIngredient(r.Context(), recipeID, productID); err != nil {
 				// Doesn't exist, create it
 				if err := repo.CreateIngredient(r.Context(), productID, recipeID, quantityPercent); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					Error(w, "Creating ingredient", err, http.StatusInternalServerError)
 					return
 				}
 			} else {
 				// Exists, update it
 				if err := repo.UpdateIngredient(r.Context(), productID, recipeID, quantityPercent); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					Error(w, "Updating ingredient", err, http.StatusInternalServerError)
 					return
 				}
 			}
 
 			w.Header().Add("HX-Trigger", "ingredient-update")
+			if err := templates.Alert("Success", "alert-success").Render(w); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
 		})
 
 		r.Get("/table", func(w http.ResponseWriter, r *http.Request) {
@@ -163,10 +166,14 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 				recipeID := uuid.Must(uuid.Parse(chi.URLParam(r, "recipeID")))
 				productID := chi.URLParam(r, "productID")
 				if err := repo.DeleteIngredient(r.Context(), productID, recipeID); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					Error(w, "Deleting ingredient", err, http.StatusInternalServerError)
 					return
 				}
+
 				w.Header().Add("HX-Trigger", "ingredient-update")
+				if err := templates.Alert("Success", "alert-success").Render(w); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
 			})
 		})
 	}

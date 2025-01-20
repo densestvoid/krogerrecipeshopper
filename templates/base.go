@@ -2,6 +2,7 @@ package templates
 
 import (
 	"maragu.dev/gomponents"
+	htmx "maragu.dev/gomponents-htmx"
 	"maragu.dev/gomponents/html"
 )
 
@@ -46,11 +47,22 @@ func baseBody(bodyNodes []gomponents.Node) gomponents.Node {
 		// Menu
 		Menu(),
 
+		// HTMX response toast messages
+		html.Div(
+			html.Class("position-absolute top-0 start-50 translate-middle-x"),
+			html.Div(
+				html.ID("alerts"),
+				html.Class("d-flex flex-column justify-content-center"),
+				htmx.Ext("remove-me"),
+			),
+		),
+
 		// Custom page content
 		gomponents.Group(bodyNodes),
 
 		// HTMX
 		html.Script(html.Src("https://unpkg.com/htmx.org@2.0.4")),
+		html.Script(html.Src("https://unpkg.com/htmx-ext-remove-me@2.0.0/remove-me.js")), // Auto remove elements (alerts)
 		// Bootstrap JS
 		html.Script(
 			html.Src("https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"),

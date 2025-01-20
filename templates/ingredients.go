@@ -205,6 +205,7 @@ func IngredientRow(ingredient Ingredient) gomponents.Node {
 				gomponents.Text("Delete"),
 				htmx.Delete(fmt.Sprintf("/recipes/%v/ingredients/%s", ingredient.RecipeID, ingredient.ProductID)),
 				htmx.Swap("none"),
+				htmx.Confirm("Are you sure you want to remove this ingredient from the recipe?"),
 			),
 		),
 	)

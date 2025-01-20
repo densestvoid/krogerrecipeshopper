@@ -75,6 +75,16 @@ func (m *Repository) UpdateRecipe(ctx context.Context, recipe Recipe) error {
 }
 
 func (m *Repository) DeleteRecipe(ctx context.Context, id uuid.UUID) error {
-	_, err := m.db.ExecContext(ctx, `DELETE FROM recipes WHERE id = $1`, id)
-	return err
+	tx, err := m.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM ingredients where recipe_id = $1`, id); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM recipes WHERE id = $1`, id); err != nil {
+		return err
+	}
+	return tx.Commit()
 }

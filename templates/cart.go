@@ -130,6 +130,7 @@ func CartProductRow(cartProduct CartProduct) gomponents.Node {
 				gomponents.Text("Delete"),
 				htmx.Delete(fmt.Sprintf("/cart/%v", cartProduct.ProductID)),
 				htmx.Swap("none"),
+				htmx.Confirm("Are you sure you want to remove this product from your cart?"),
 			),
 		),
 	)
