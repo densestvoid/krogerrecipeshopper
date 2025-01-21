@@ -8,9 +8,10 @@ import (
 	"maragu.dev/gomponents/html"
 
 	"github.com/densestvoid/krogerrecipeshopper/data"
+	"github.com/google/uuid"
 )
 
-func Recipes() gomponents.Node {
+func Recipes(userID uuid.UUID) gomponents.Node {
 	return BasePage("Recipes", "/", gomponents.Group{
 		html.Div(
 			html.Class("text-center"),
@@ -18,8 +19,9 @@ func Recipes() gomponents.Node {
 				gomponents.Text("Recipes"),
 			),
 			html.Div(
-				htmx.Get("/recipes/table"),
+				htmx.Post("/recipes/search"),
 				htmx.Swap("innerHTML"),
+				htmx.Vals(fmt.Sprintf(`{"userID": "%s"}`, userID)),
 				htmx.Trigger("load,recipe-update from:body"),
 			),
 			ModalButton(
@@ -52,7 +54,42 @@ func Recipes() gomponents.Node {
 	})
 }
 
-func RecipeDetailsForm(recipe *data.Recipe) gomponents.Node {
+func ExploreRecipes() gomponents.Node {
+	return BasePage("Recipes", "/", gomponents.Group{
+		html.Div(
+			html.Class("text-center"),
+			html.H3(
+				gomponents.Text("Explore"),
+			),
+			html.Div(
+				html.H3(gomponents.Text("Search recipes")),
+				html.Input(
+					html.Class("form-control"),
+					html.Type("search"),
+					html.Name("name"),
+					html.Placeholder("Begin typing to seach recipes"),
+					htmx.Post("/recipes/search"),
+					htmx.Trigger("input changed delay:500ms, keyup[key=='Enter']"),
+					htmx.Target("#recipes-search-table"),
+					htmx.Indicator(".htmx-indicator"),
+				),
+				html.Span(html.Class("htmx-indicator"), gomponents.Text("Searching...")),
+				html.Div(html.ID("recipes-search-table")),
+			),
+		),
+		Modal("recipe-details-modal", "View recipe",
+			gomponents.Group{},
+			gomponents.Group{
+				html.Form(
+					html.ID("recipe-details-form"),
+				),
+			},
+			gomponents.Group{},
+		),
+	})
+}
+
+func RecipeDetailsForm(userID uuid.UUID, recipe *data.Recipe) gomponents.Node {
 	if recipe != nil {
 		return gomponents.Group{
 			html.Input(
@@ -66,6 +103,7 @@ func RecipeDetailsForm(recipe *data.Recipe) gomponents.Node {
 				html.Type("text"),
 				html.Name("name"),
 				html.Value(recipe.Name),
+				Disabled(userID != recipe.UserID),
 			)),
 			FormInput("recipe-description", "Recipe description", html.Input(
 				html.ID("recipe-description"),
@@ -73,6 +111,7 @@ func RecipeDetailsForm(recipe *data.Recipe) gomponents.Node {
 				html.Type("text"),
 				html.Name("description"),
 				html.Value(recipe.Description),
+				Disabled(userID != recipe.UserID),
 			)),
 		}
 	}
@@ -103,10 +142,17 @@ func FormInput(id, label string, input gomponents.Node) gomponents.Node {
 	)
 }
 
-func RecipeTable(recipes []data.Recipe) gomponents.Node {
+func Disabled(b bool) gomponents.Node {
+	if b {
+		return html.Disabled()
+	}
+	return nil
+}
+
+func RecipeTable(userID uuid.UUID, recipes []data.Recipe) gomponents.Node {
 	var recipeRows gomponents.Group
 	for _, recipe := range recipes {
-		recipeRows = append(recipeRows, RecipeRow(recipe))
+		recipeRows = append(recipeRows, RecipeRow(userID, recipe))
 	}
 	return html.Table(
 		html.Class("table table-striped table-bordered text-center align-middle w-100"),
@@ -128,7 +174,44 @@ func RecipeTable(recipes []data.Recipe) gomponents.Node {
 	)
 }
 
-func RecipeRow(recipe data.Recipe) gomponents.Node {
+func RecipeRow(userID uuid.UUID, recipe data.Recipe) gomponents.Node {
+	actions := gomponents.Group{
+		html.Li(
+			ModalButton(
+				"recipe-details-modal",
+				"Details",
+				"w-100",
+				fmt.Sprintf("/recipes/%s/details", recipe.ID.String()),
+				"#recipe-details-form",
+			),
+		),
+	}
+	if userID == recipe.UserID {
+		actions = append(actions,
+			html.Li(
+				html.A(
+					html.Href(fmt.Sprintf("/recipes/%v/ingredients", recipe.ID)),
+					html.Button(
+						html.Type("button"),
+						html.Class("btn btn-secondary w-100"),
+						gomponents.Text("Ingredients"),
+					),
+				),
+			),
+			html.Li(html.Hr(html.Class("dropdown-divider"))),
+			html.Li(
+				html.Button(
+					html.Type("button"),
+					html.Class("btn btn-danger w-100"),
+					gomponents.Text("Delete"),
+					htmx.Delete(fmt.Sprintf("/recipes/%v", recipe.ID)),
+					htmx.Swap("none"),
+					htmx.Confirm("Are you sure you want to delete thi recipe?"),
+				),
+			),
+		)
+	}
+
 	return html.Tr(
 		html.Td(gomponents.Text(recipe.Name)),
 		html.Td(
@@ -152,36 +235,7 @@ func RecipeRow(recipe data.Recipe) gomponents.Node {
 				),
 				html.Ul(
 					html.Class("dropdown-menu"),
-					html.Li(
-						ModalButton(
-							"recipe-details-modal",
-							"Edit details",
-							"w-100",
-							fmt.Sprintf("/recipes/%s/details", recipe.ID.String()),
-							"#recipe-details-form",
-						),
-					),
-					html.Li(
-						html.A(
-							html.Href(fmt.Sprintf("/recipes/%v/ingredients", recipe.ID)),
-							html.Button(
-								html.Type("button"),
-								html.Class("btn btn-secondary w-100"),
-								gomponents.Text("Edit ingredients"),
-							),
-						),
-					),
-					html.Li(html.Hr(html.Class("dropdown-divider"))),
-					html.Li(
-						html.Button(
-							html.Type("button"),
-							html.Class("btn btn-danger w-100"),
-							gomponents.Text("Delete"),
-							htmx.Delete(fmt.Sprintf("/recipes/%v", recipe.ID)),
-							htmx.Swap("none"),
-							htmx.Confirm("Are you sure you want to delete thi recipe?"),
-						),
-					),
+					actions,
 				),
 			),
 		),

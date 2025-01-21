@@ -36,14 +36,23 @@ func (f ListRecipesFilterByUserID) listRecipoesFilter() string {
 	return fmt.Sprintf(`user_id = '%v'`, f.UserID)
 }
 
+type ListRecipesFilterByName struct {
+	Name string
+}
+
+func (f ListRecipesFilterByName) listRecipoesFilter() string {
+	return fmt.Sprintf(`name ILIKE '%%%s%%'`, f.Name)
+}
+
 func (m *Repository) ListRecipes(ctx context.Context, filters ...ListRecipesFilter) ([]Recipe, error) {
 	query := `SELECT id, user_id, name, description FROM recipes`
-	if filters != nil {
+	if len(filters) > 0 {
+		query += " WHERE "
 		filterStrings := []string{}
 		for _, filter := range filters {
 			filterStrings = append(filterStrings, filter.listRecipoesFilter())
 		}
-		query += " WHERE " + strings.Join(filterStrings, " AND ")
+		query += strings.Join(filterStrings, " AND ")
 	}
 	rows, err := m.db.QueryContext(ctx, query)
 	if err != nil {

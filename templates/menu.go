@@ -116,7 +116,7 @@ func Menu() gomponents.Node {
 								),
 								html.A(
 									html.Class("btn btn-secondary w-100 my-2"),
-									html.Href("/explore"),
+									html.Href("/recipes/explore"),
 									gomponents.Text("Explore"),
 								),
 								html.A(
