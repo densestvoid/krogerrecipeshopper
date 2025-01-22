@@ -34,22 +34,28 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 			r.ParseForm()
 
 			productID := r.FormValue("productID")
-			quantityFloat, err := strconv.ParseFloat(r.FormValue("quantity"), 32)
+			quantityFloat, err := strconv.ParseFloat(r.FormValue("quantity"), 64)
 			if err != nil || quantityFloat <= 0 {
 				Error(w, "Invalid quantity", err, http.StatusBadRequest)
 				return
 			}
 			quantityPercent := int(quantityFloat * 100)
 
+			staple, err := strconv.ParseBool(r.FormValue("staple"))
+			if err != nil {
+				Error(w, "Invalid staple value", err, http.StatusBadRequest)
+				return
+			}
+
 			if _, err := repo.GetIngredient(r.Context(), recipeID, productID); err != nil {
 				// Doesn't exist, create it
-				if err := repo.CreateIngredient(r.Context(), productID, recipeID, quantityPercent); err != nil {
+				if err := repo.CreateIngredient(r.Context(), productID, recipeID, quantityPercent, staple); err != nil {
 					Error(w, "Creating ingredient", err, http.StatusInternalServerError)
 					return
 				}
 			} else {
 				// Exists, update it
-				if err := repo.UpdateIngredient(r.Context(), productID, recipeID, quantityPercent); err != nil {
+				if err := repo.UpdateIngredient(r.Context(), productID, recipeID, quantityPercent, staple); err != nil {
 					Error(w, "Updating ingredient", err, http.StatusInternalServerError)
 					return
 				}
@@ -129,6 +135,7 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 								},
 								RecipeID: ingredient.RecipeID,
 								Quantity: ingredient.Quantity,
+								Staple:   ingredient.Staple,
 							})
 							break
 						}

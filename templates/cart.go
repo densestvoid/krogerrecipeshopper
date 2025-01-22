@@ -2,6 +2,7 @@ package templates
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/densestvoid/krogerrecipeshopper/data"
 	"maragu.dev/gomponents"
@@ -66,7 +67,7 @@ func CartProductDetailsForm(cartProduct data.CartProduct) gomponents.Node {
 			html.Name("quantity"),
 			html.Min("0.01"),
 			html.Step("0.5"),
-			html.Value(fmt.Sprintf("%.2f", float32(cartProduct.Quantity)/100)),
+			html.Value(fmt.Sprintf("%.2f", float64(cartProduct.Quantity)/100)),
 		)),
 	}
 }
@@ -78,33 +79,79 @@ type CartProduct struct {
 	Size        string
 	ImageURL    string
 	Quantity    int
+	Staple      bool
 }
 
 func CartTable(cartProducts []CartProduct) gomponents.Node {
-	var ingredientRows gomponents.Group
+	var ingredientRows, stapleRows gomponents.Group
 	for _, cartProduct := range cartProducts {
-		ingredientRows = append(ingredientRows, CartProductRow(cartProduct))
+		if cartProduct.Staple {
+			stapleRows = append(stapleRows, CartProductRow(cartProduct))
+		} else {
+			ingredientRows = append(ingredientRows, CartProductRow(cartProduct))
+		}
 	}
-	return html.Table(
-		html.Class("table table-striped table-bordered text-center align-middle w-100"),
-		html.THead(
-			html.Tr(
-				html.Th(gomponents.Text("Image")),
-				html.Th(gomponents.Text("Brand")),
-				html.Th(gomponents.Text("Description")),
-				html.Th(gomponents.Text("Size")),
-				html.Th(gomponents.Text("Quantity")),
-				html.Th(gomponents.Text("Actions")),
+	return gomponents.Group{
+		html.Table(
+			html.Class("table table-striped table-bordered text-center align-middle w-100"),
+			html.THead(
+				html.Tr(
+					html.Th(gomponents.Text("Image")),
+					html.Th(gomponents.Text("Brand")),
+					html.Th(gomponents.Text("Description")),
+					html.Th(gomponents.Text("Size")),
+					html.Th(gomponents.Text("Quantity")),
+					html.Th(gomponents.Text("Actions")),
+				),
+			),
+			html.TBody(
+				html.Class("table-group-divider"),
+				html.Tr(html.Td(html.ColSpan("6"), gomponents.Text("To order"))),
+				ingredientRows,
+			),
+			html.TBody(
+				html.Class("table-group-divider"),
+				html.Tr(html.Td(html.ColSpan("6"), gomponents.Text("Add staples"))),
+				stapleRows,
 			),
 		),
-		html.TBody(
-			html.Class("table-group-divider"),
-			ingredientRows,
-		),
-	)
+	}
 }
 
 func CartProductRow(cartProduct CartProduct) gomponents.Node {
+	actions := gomponents.Group{
+		ModalButton(
+			"cart-product-details-modal",
+			"Edit details",
+			"",
+			fmt.Sprintf("/cart/%v", cartProduct.ProductID),
+			"#cart-product-details-form",
+		),
+	}
+	if cartProduct.Staple {
+		actions = append(actions,
+			html.Button(
+				html.Type("button"),
+				html.Class("btn btn-primary"),
+				gomponents.Text("Include"),
+				htmx.Post(fmt.Sprintf("/cart/%v/include", cartProduct.ProductID)),
+				htmx.Swap("none"),
+			),
+		)
+
+	} else {
+		actions = append(actions,
+			html.Button(
+				html.Type("button"),
+				html.Class("btn btn-danger"),
+				gomponents.Text("Delete"),
+				htmx.Delete(fmt.Sprintf("/cart/%v", cartProduct.ProductID)),
+				htmx.Swap("none"),
+				htmx.Confirm("Are you sure you want to remove this product from your cart?"),
+			),
+		)
+
+	}
 	return html.Tr(
 		html.Td(
 			html.Img(
@@ -115,23 +162,7 @@ func CartProductRow(cartProduct CartProduct) gomponents.Node {
 		html.Td(gomponents.Text(cartProduct.Brand)),
 		html.Td(gomponents.Text(cartProduct.Description)),
 		html.Td(gomponents.Text(cartProduct.Size)),
-		html.Td(gomponents.Text(fmt.Sprintf("%.2f", float32(cartProduct.Quantity)/100))),
-		html.Td(
-			ModalButton(
-				"cart-product-details-modal",
-				"Edit details",
-				"",
-				fmt.Sprintf("/cart/%v", cartProduct.ProductID),
-				"#cart-product-details-form",
-			),
-			html.Button(
-				html.Type("button"),
-				html.Class("btn btn-danger"),
-				gomponents.Text("Delete"),
-				htmx.Delete(fmt.Sprintf("/cart/%v", cartProduct.ProductID)),
-				htmx.Swap("none"),
-				htmx.Confirm("Are you sure you want to remove this product from your cart?"),
-			),
-		),
+		html.Td(gomponents.Text(fmt.Sprintf("%.2f -> %d", float64(cartProduct.Quantity)/100, int(math.Ceil(float64(cartProduct.Quantity)/100))))),
+		html.Td(actions),
 	)
 }

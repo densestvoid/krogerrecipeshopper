@@ -21,3 +21,7 @@ tasks:
     dotenv: ['{{.ROOT_DIR}}/.env']
     cmds:
       - ssh -i $SSHKEY $USERNAME@$HOST
+  
+  migration:
+    cmds:
+      - goose --dir migrations -s create {{.CLI_ARGS}} sql

@@ -68,7 +68,16 @@ func IngredientDetailsForm(ingredient *data.Ingredient) gomponents.Node {
 				html.Name("quantity"),
 				html.Min("0.01"),
 				html.Step("0.5"),
-				html.Value(fmt.Sprintf("%.2f", float32(ingredient.Quantity)/100)),
+				html.Value(fmt.Sprintf("%.2f", float64(ingredient.Quantity)/100)),
+			)),
+			FormCheck("ingredient-staple", "Ingredient staple", html.Input(
+				html.ID("ingredient-staple"),
+				html.Class("form-check-input"),
+				html.Type("checkbox"),
+				html.Type("checkbox"),
+				html.Value("true"),
+				html.Name("staple"),
+				Checked(ingredient.Staple),
 			)),
 		}
 	}
@@ -79,8 +88,24 @@ func IngredientDetailsForm(ingredient *data.Ingredient) gomponents.Node {
 			html.Class("form-control"),
 			html.Type("number"),
 			html.Name("quantity"),
+			html.Min("0.01"),
+			html.Step("0.5"),
+		)),
+		FormCheck("ingredient-staple", "Ingredient staple", html.Input(
+			html.ID("ingredient-staple"),
+			html.Class("form-check-input"),
+			html.Type("checkbox"),
+			html.Value("true"),
+			html.Name("staple"),
 		)),
 	}
+}
+
+func Checked(b bool) gomponents.Node {
+	if b {
+		return html.Checked()
+	}
+	return nil
 }
 
 func ProductsSearch() gomponents.Node {
@@ -153,6 +178,7 @@ type Ingredient struct {
 	Product
 	RecipeID uuid.UUID
 	Quantity int
+	Staple   bool
 }
 
 func IngredientsTable(ingredients []Ingredient) gomponents.Node {
@@ -169,6 +195,7 @@ func IngredientsTable(ingredients []Ingredient) gomponents.Node {
 				html.Th(gomponents.Text("Description")),
 				html.Th(gomponents.Text("Size")),
 				html.Th(gomponents.Text("Quantity")),
+				html.Th(gomponents.Text("Staple")),
 				html.Th(gomponents.Text("Actions")),
 			),
 		),
@@ -190,7 +217,8 @@ func IngredientRow(ingredient Ingredient) gomponents.Node {
 		html.Td(gomponents.Text(ingredient.Brand)),
 		html.Td(gomponents.Text(ingredient.Description)),
 		html.Td(gomponents.Text(ingredient.Size)),
-		html.Td(gomponents.Text(fmt.Sprintf("%.2f", float32(ingredient.Quantity)/100))),
+		html.Td(gomponents.Textf("%.2f", float64(ingredient.Quantity)/100)),
+		html.Td(gomponents.Textf("%t", ingredient.Staple)),
 		html.Td(
 			ModalButton(
 				"ingredient-details-modal",

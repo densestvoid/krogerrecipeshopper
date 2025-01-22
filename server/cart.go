@@ -12,6 +12,10 @@ import (
 	"github.com/google/uuid"
 )
 
+func NewT[T any](t T) *T {
+	return &t
+}
+
 const KrogerCartURL = "https://www.kroger.com/shopping/cart"
 
 func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
@@ -93,6 +97,7 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 								Size:        size,
 								ImageURL:    imageURL,
 								Quantity:    cartProduct.Quantity,
+								Staple:      cartProduct.Staple,
 							})
 							break
 						}
@@ -120,7 +125,7 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 				return
 			}
 			for _, ingredient := range ingredients {
-				if err := repo.AddCartProduct(r.Context(), userID, ingredient.ProductID, ingredient.Quantity); err != nil {
+				if err := repo.AddCartProduct(r.Context(), userID, ingredient.ProductID, ingredient.Quantity, ingredient.Staple); err != nil {
 					Error(w, "Adding cart product", err, http.StatusInternalServerError)
 					return
 				}
@@ -142,14 +147,14 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 			r.ParseForm()
 
 			productID := r.FormValue("productID")
-			quantityFloat, err := strconv.ParseFloat(r.FormValue("quantity"), 32)
+			quantityFloat, err := strconv.ParseFloat(r.FormValue("quantity"), 64)
 			if err != nil || quantityFloat <= 0 {
 				Error(w, "Invalid quantity", err, http.StatusBadRequest)
 				return
 			}
 			quantityPercent := int(quantityFloat * 100)
 
-			if err := repo.SetCartProduct(r.Context(), userID, productID, quantityPercent); err != nil {
+			if err := repo.SetCartProduct(r.Context(), userID, productID, &quantityPercent, nil); err != nil {
 				Error(w, "Updating cart product", err, http.StatusInternalServerError)
 				return
 			}
@@ -201,6 +206,26 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 				}
 			})
+
+			// Update product to be included in the products sent to the kroger cart
+			r.Post("/include", func(w http.ResponseWriter, r *http.Request) {
+				userID, err := GetUserIDRequestCookie(r)
+				if err != nil {
+					Error(w, "Getting user id", err, http.StatusUnauthorized)
+					return
+				}
+				productID := chi.URLParam(r, "productID")
+
+				if err := repo.SetCartProduct(r.Context(), userID, productID, nil, NewT(false)); err != nil {
+					Error(w, "Updating cart product", err, http.StatusInternalServerError)
+					return
+				}
+
+				w.Header().Add("HX-Trigger", "cart-update")
+				if err := templates.Alert("Success", "alert-success").Render(w); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+			})
 		})
 
 		r.Post("/checkout", func(w http.ResponseWriter, r *http.Request) {
@@ -217,7 +242,7 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 				return
 			}
 
-			cartProducts, err := repo.ListCartProducts(r.Context(), userID)
+			cartProducts, err := repo.ListCartProducts(r.Context(), userID, &data.ListCartProductsNonStaples{})
 			if err != nil {
 				Error(w, "Listing cart products", err, http.StatusInternalServerError)
 				return

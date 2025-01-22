@@ -12,7 +12,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -27,7 +27,7 @@ var serveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 
-		db, err := sql.Open("postgres", fmt.Sprintf(
+		db, err := sql.Open("pgx", fmt.Sprintf(
 			"host=%s port=%d user=%s password=%s sslmode=disable",
 			viper.GetString("db-host"),
 			viper.GetInt("db-port"),

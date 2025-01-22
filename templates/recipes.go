@@ -142,6 +142,18 @@ func FormInput(id, label string, input gomponents.Node) gomponents.Node {
 	)
 }
 
+func FormCheck(id, label string, input gomponents.Node) gomponents.Node {
+	return html.Div(
+		html.Class("form-check"),
+		input,
+		html.Label(
+			html.Class("form-check-label"),
+			html.For(id),
+			gomponents.Text(label),
+		),
+	)
+}
+
 func Disabled(b bool) gomponents.Node {
 	if b {
 		return html.Disabled()
