@@ -197,19 +197,19 @@ func RecipeRow(userID uuid.UUID, recipe data.Recipe) gomponents.Node {
 				"#recipe-details-form",
 			),
 		),
+		html.Li(
+			html.A(
+				html.Href(fmt.Sprintf("/recipes/%v/ingredients", recipe.ID)),
+				html.Button(
+					html.Type("button"),
+					html.Class("btn btn-secondary w-100"),
+					gomponents.Text("Ingredients"),
+				),
+			),
+		),
 	}
 	if userID == recipe.UserID {
 		actions = append(actions,
-			html.Li(
-				html.A(
-					html.Href(fmt.Sprintf("/recipes/%v/ingredients", recipe.ID)),
-					html.Button(
-						html.Type("button"),
-						html.Class("btn btn-secondary w-100"),
-						gomponents.Text("Ingredients"),
-					),
-				),
-			),
 			html.Li(html.Hr(html.Class("dropdown-divider"))),
 			html.Li(
 				html.Button(

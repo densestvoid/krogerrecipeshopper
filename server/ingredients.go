@@ -15,6 +15,12 @@ import (
 func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			userID, err := GetUserIDRequestCookie(r)
+			if err != nil {
+				Error(w, "Getting user id", err, http.StatusUnauthorized)
+				return
+			}
+
 			recipeID := uuid.MustParse(chi.URLParam(r, "recipeID"))
 			recipe, err := repo.GetRecipe(r.Context(), recipeID)
 			if err != nil {
@@ -22,7 +28,7 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 				return
 			}
 
-			if err := templates.Ingredients(recipe).Render(w); err != nil {
+			if err := templates.Ingredients(userID, recipe).Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -41,10 +47,12 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 			}
 			quantityPercent := int(quantityFloat * 100)
 
-			staple, err := strconv.ParseBool(r.FormValue("staple"))
-			if err != nil {
-				Error(w, "Invalid staple value", err, http.StatusBadRequest)
-				return
+			staple := false
+			if r.Form.Has("staple") {
+				if staple, err = strconv.ParseBool(r.FormValue("staple")); err != nil {
+					Error(w, "Invalid staple value", err, http.StatusBadRequest)
+					return
+				}
 			}
 
 			if _, err := repo.GetIngredient(r.Context(), recipeID, productID); err != nil {
@@ -68,7 +76,18 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 		})
 
 		r.Get("/table", func(w http.ResponseWriter, r *http.Request) {
+			userID, err := GetUserIDRequestCookie(r)
+			if err != nil {
+				Error(w, "Getting user id", err, http.StatusUnauthorized)
+				return
+			}
+
 			recipeID := uuid.MustParse(chi.URLParam(r, "recipeID"))
+			recipe, err := repo.GetRecipe(r.Context(), recipeID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 			ingredients, err := repo.ListIngredients(r.Context(), recipeID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -143,7 +162,7 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 				}
 			}
 
-			if err := templates.IngredientsTable(ingredientProducts).Render(w); err != nil {
+			if err := templates.IngredientsTable(userID, recipe.UserID, ingredientProducts).Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}

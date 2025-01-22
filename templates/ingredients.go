@@ -11,7 +11,7 @@ import (
 	"github.com/densestvoid/krogerrecipeshopper/data"
 )
 
-func Ingredients(recipe *data.Recipe) gomponents.Node {
+func Ingredients(userID uuid.UUID, recipe *data.Recipe) gomponents.Node {
 	return BasePage("Ingredients", "/", gomponents.Group{
 		html.Div(
 			html.Class("text-center"),
@@ -23,13 +23,13 @@ func Ingredients(recipe *data.Recipe) gomponents.Node {
 				htmx.Swap("innerHTML"),
 				htmx.Trigger("load,ingredient-update from:body"),
 			),
-			ModalButton(
+			gomponents.If(userID == recipe.UserID, ModalButton(
 				"ingredient-details-modal",
 				"Add ingredient",
 				"",
 				fmt.Sprintf("/recipes/%v/ingredients//details", recipe.ID),
 				"#ingredient-details-form",
-			),
+			)),
 		),
 		Modal("ingredient-details-modal", "Edit ingredient",
 			gomponents.Group{},
@@ -73,7 +73,6 @@ func IngredientDetailsForm(ingredient *data.Ingredient) gomponents.Node {
 			FormCheck("ingredient-staple", "Ingredient staple", html.Input(
 				html.ID("ingredient-staple"),
 				html.Class("form-check-input"),
-				html.Type("checkbox"),
 				html.Type("checkbox"),
 				html.Value("true"),
 				html.Name("staple"),
@@ -181,10 +180,14 @@ type Ingredient struct {
 	Staple   bool
 }
 
-func IngredientsTable(ingredients []Ingredient) gomponents.Node {
-	var ingredientRows gomponents.Group
+func IngredientsTable(userID, recipeUserID uuid.UUID, ingredients []Ingredient) gomponents.Node {
+	var ingredientRows, stapleRows gomponents.Group
 	for _, ingredient := range ingredients {
-		ingredientRows = append(ingredientRows, IngredientRow(ingredient))
+		if ingredient.Staple {
+			stapleRows = append(stapleRows, IngredientRow(userID, recipeUserID, ingredient))
+		} else {
+			ingredientRows = append(ingredientRows, IngredientRow(userID, recipeUserID, ingredient))
+		}
 	}
 	return html.Table(
 		html.Class("table table-striped table-bordered text-center align-middle w-100"),
@@ -195,18 +198,23 @@ func IngredientsTable(ingredients []Ingredient) gomponents.Node {
 				html.Th(gomponents.Text("Description")),
 				html.Th(gomponents.Text("Size")),
 				html.Th(gomponents.Text("Quantity")),
-				html.Th(gomponents.Text("Staple")),
-				html.Th(gomponents.Text("Actions")),
+				gomponents.If(userID == recipeUserID, html.Th(gomponents.Text("Actions"))),
 			),
 		),
 		html.TBody(
 			html.Class("table-group-divider"),
+			html.Tr(html.Td(html.ColSpan("6"), gomponents.Text("Ingredients"))),
 			ingredientRows,
+		),
+		html.TBody(
+			html.Class("table-group-divider"),
+			html.Tr(html.Td(html.ColSpan("6"), gomponents.Text("Staples"))),
+			stapleRows,
 		),
 	)
 }
 
-func IngredientRow(ingredient Ingredient) gomponents.Node {
+func IngredientRow(userID, recipeUserID uuid.UUID, ingredient Ingredient) gomponents.Node {
 	return html.Tr(
 		html.Td(
 			html.Img(
@@ -218,8 +226,7 @@ func IngredientRow(ingredient Ingredient) gomponents.Node {
 		html.Td(gomponents.Text(ingredient.Description)),
 		html.Td(gomponents.Text(ingredient.Size)),
 		html.Td(gomponents.Textf("%.2f", float64(ingredient.Quantity)/100)),
-		html.Td(gomponents.Textf("%t", ingredient.Staple)),
-		html.Td(
+		gomponents.If(userID == recipeUserID, html.Td(
 			ModalButton(
 				"ingredient-details-modal",
 				"Edit details",
@@ -235,6 +242,6 @@ func IngredientRow(ingredient Ingredient) gomponents.Node {
 				htmx.Swap("none"),
 				htmx.Confirm("Are you sure you want to remove this ingredient from the recipe?"),
 			),
-		),
+		)),
 	)
 }
