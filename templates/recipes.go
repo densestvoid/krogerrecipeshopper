@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func Recipes(userID uuid.UUID) gomponents.Node {
+func Recipes(accountID uuid.UUID) gomponents.Node {
 	return BasePage("Recipes", "/", gomponents.Group{
 		html.Div(
 			html.Class("text-center"),
@@ -21,7 +21,7 @@ func Recipes(userID uuid.UUID) gomponents.Node {
 			html.Div(
 				htmx.Post("/recipes/search"),
 				htmx.Swap("innerHTML"),
-				htmx.Vals(fmt.Sprintf(`{"userID": "%s"}`, userID)),
+				htmx.Vals(fmt.Sprintf(`{"accountID": "%s"}`, accountID)),
 				htmx.Trigger("load,recipe-update from:body"),
 			),
 			ModalButton(
@@ -89,7 +89,7 @@ func ExploreRecipes() gomponents.Node {
 	})
 }
 
-func RecipeDetailsForm(userID uuid.UUID, recipe *data.Recipe) gomponents.Node {
+func RecipeDetailsForm(accountID uuid.UUID, recipe *data.Recipe) gomponents.Node {
 	if recipe != nil {
 		return gomponents.Group{
 			html.Input(
@@ -103,7 +103,7 @@ func RecipeDetailsForm(userID uuid.UUID, recipe *data.Recipe) gomponents.Node {
 				html.Type("text"),
 				html.Name("name"),
 				html.Value(recipe.Name),
-				Disabled(userID != recipe.UserID),
+				Disabled(accountID != recipe.AccountID),
 			)),
 			FormInput("recipe-description", "Recipe description", html.Input(
 				html.ID("recipe-description"),
@@ -111,7 +111,7 @@ func RecipeDetailsForm(userID uuid.UUID, recipe *data.Recipe) gomponents.Node {
 				html.Type("text"),
 				html.Name("description"),
 				html.Value(recipe.Description),
-				Disabled(userID != recipe.UserID),
+				Disabled(accountID != recipe.AccountID),
 			)),
 		}
 	}
@@ -161,10 +161,10 @@ func Disabled(b bool) gomponents.Node {
 	return nil
 }
 
-func RecipeTable(userID uuid.UUID, recipes []data.Recipe) gomponents.Node {
+func RecipeTable(accountID uuid.UUID, recipes []data.Recipe) gomponents.Node {
 	var recipeRows gomponents.Group
 	for _, recipe := range recipes {
-		recipeRows = append(recipeRows, RecipeRow(userID, recipe))
+		recipeRows = append(recipeRows, RecipeRow(accountID, recipe))
 	}
 	return html.Table(
 		html.Class("table table-striped table-bordered text-center align-middle w-100"),
@@ -186,7 +186,7 @@ func RecipeTable(userID uuid.UUID, recipes []data.Recipe) gomponents.Node {
 	)
 }
 
-func RecipeRow(userID uuid.UUID, recipe data.Recipe) gomponents.Node {
+func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 	actions := gomponents.Group{
 		html.Li(
 			ModalButton(
@@ -208,7 +208,7 @@ func RecipeRow(userID uuid.UUID, recipe data.Recipe) gomponents.Node {
 			),
 		),
 	}
-	if userID == recipe.UserID {
+	if accountID == recipe.AccountID {
 		actions = append(actions,
 			html.Li(html.Hr(html.Class("dropdown-divider"))),
 			html.Li(

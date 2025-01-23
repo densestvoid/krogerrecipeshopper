@@ -11,7 +11,7 @@ import (
 	"github.com/densestvoid/krogerrecipeshopper/data"
 )
 
-func Ingredients(userID uuid.UUID, recipe *data.Recipe) gomponents.Node {
+func Ingredients(accountID uuid.UUID, recipe *data.Recipe) gomponents.Node {
 	return BasePage("Ingredients", "/", gomponents.Group{
 		html.Div(
 			html.Class("text-center"),
@@ -23,7 +23,7 @@ func Ingredients(userID uuid.UUID, recipe *data.Recipe) gomponents.Node {
 				htmx.Swap("innerHTML"),
 				htmx.Trigger("load,ingredient-update from:body"),
 			),
-			gomponents.If(userID == recipe.UserID, ModalButton(
+			gomponents.If(accountID == recipe.AccountID, ModalButton(
 				"ingredient-details-modal",
 				"Add ingredient",
 				"",
@@ -180,13 +180,13 @@ type Ingredient struct {
 	Staple   bool
 }
 
-func IngredientsTable(userID, recipeUserID uuid.UUID, ingredients []Ingredient) gomponents.Node {
+func IngredientsTable(accountID, recipeAccountID uuid.UUID, ingredients []Ingredient) gomponents.Node {
 	var ingredientRows, stapleRows gomponents.Group
 	for _, ingredient := range ingredients {
 		if ingredient.Staple {
-			stapleRows = append(stapleRows, IngredientRow(userID, recipeUserID, ingredient))
+			stapleRows = append(stapleRows, IngredientRow(accountID, recipeAccountID, ingredient))
 		} else {
-			ingredientRows = append(ingredientRows, IngredientRow(userID, recipeUserID, ingredient))
+			ingredientRows = append(ingredientRows, IngredientRow(accountID, recipeAccountID, ingredient))
 		}
 	}
 	return html.Table(
@@ -198,7 +198,7 @@ func IngredientsTable(userID, recipeUserID uuid.UUID, ingredients []Ingredient) 
 				html.Th(gomponents.Text("Description")),
 				html.Th(gomponents.Text("Size")),
 				html.Th(gomponents.Text("Quantity")),
-				gomponents.If(userID == recipeUserID, html.Th(gomponents.Text("Actions"))),
+				gomponents.If(accountID == recipeAccountID, html.Th(gomponents.Text("Actions"))),
 			),
 		),
 		html.TBody(
@@ -214,7 +214,7 @@ func IngredientsTable(userID, recipeUserID uuid.UUID, ingredients []Ingredient) 
 	)
 }
 
-func IngredientRow(userID, recipeUserID uuid.UUID, ingredient Ingredient) gomponents.Node {
+func IngredientRow(accountID, recipeAccountID uuid.UUID, ingredient Ingredient) gomponents.Node {
 	return html.Tr(
 		html.Td(
 			html.Img(
@@ -226,7 +226,7 @@ func IngredientRow(userID, recipeUserID uuid.UUID, ingredient Ingredient) gompon
 		html.Td(gomponents.Text(ingredient.Description)),
 		html.Td(gomponents.Text(ingredient.Size)),
 		html.Td(gomponents.Textf("%.2f", float64(ingredient.Quantity)/100)),
-		gomponents.If(userID == recipeUserID, html.Td(
+		gomponents.If(accountID == recipeAccountID, html.Td(
 			ModalButton(
 				"ingredient-details-modal",
 				"Edit details",

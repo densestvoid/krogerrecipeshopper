@@ -15,9 +15,9 @@ import (
 func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			userID, err := GetUserIDRequestCookie(r)
+			accountID, err := GetAccountIDRequestCookie(r)
 			if err != nil {
-				Error(w, "Getting user id", err, http.StatusUnauthorized)
+				Error(w, "Getting account id", err, http.StatusUnauthorized)
 				return
 			}
 
@@ -28,7 +28,7 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 				return
 			}
 
-			if err := templates.Ingredients(userID, recipe).Render(w); err != nil {
+			if err := templates.Ingredients(accountID, recipe).Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -76,9 +76,9 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 		})
 
 		r.Get("/table", func(w http.ResponseWriter, r *http.Request) {
-			userID, err := GetUserIDRequestCookie(r)
+			accountID, err := GetAccountIDRequestCookie(r)
 			if err != nil {
-				Error(w, "Getting user id", err, http.StatusUnauthorized)
+				Error(w, "Getting account id", err, http.StatusUnauthorized)
 				return
 			}
 
@@ -162,7 +162,7 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 				}
 			}
 
-			if err := templates.IngredientsTable(userID, recipe.UserID, ingredientProducts).Render(w); err != nil {
+			if err := templates.IngredientsTable(accountID, recipe.AccountID, ingredientProducts).Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}

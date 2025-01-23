@@ -13,13 +13,13 @@ import (
 func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			userID, err := GetUserIDRequestCookie(r)
+			accountID, err := GetAccountIDRequestCookie(r)
 			if err != nil {
-				Error(w, "Getting user id", err, http.StatusUnauthorized)
+				Error(w, "Getting account id", err, http.StatusUnauthorized)
 				return
 			}
 
-			if err := templates.Recipes(userID).Render(w); err != nil {
+			if err := templates.Recipes(accountID).Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -31,9 +31,9 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 			}
 		})
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-			userID, err := GetUserIDRequestCookie(r)
+			accountID, err := GetAccountIDRequestCookie(r)
 			if err != nil {
-				Error(w, "Getting user id", err, http.StatusUnauthorized)
+				Error(w, "Getting account id", err, http.StatusUnauthorized)
 				return
 			}
 
@@ -60,7 +60,7 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 
 				if err := repo.UpdateRecipe(r.Context(), data.Recipe{
 					ID:          id,
-					UserID:      userID,
+					AccountID:   accountID,
 					Name:        name,
 					Description: description,
 				}); err != nil {
@@ -68,7 +68,7 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 					return
 				}
 			} else {
-				_, err := repo.CreateRecipe(r.Context(), userID, name, description)
+				_, err := repo.CreateRecipe(r.Context(), accountID, name, description)
 				if err != nil {
 					Error(w, "Creating recipe", err, http.StatusInternalServerError)
 					return
@@ -81,22 +81,22 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 			}
 		})
 		r.Post("/search", func(w http.ResponseWriter, r *http.Request) {
-			userID, err := GetUserIDRequestCookie(r)
+			accountID, err := GetAccountIDRequestCookie(r)
 			if err != nil {
-				Error(w, "Getting user id", err, http.StatusUnauthorized)
+				Error(w, "Getting account id", err, http.StatusUnauthorized)
 				return
 			}
 
 			r.ParseForm()
 			filters := []data.ListRecipesFilter{}
-			if r.Form.Has("userID") {
-				filters = append(filters, data.ListRecipesFilterByUserID{UserID: uuid.MustParse(r.Form.Get("userID"))})
+			if r.Form.Has("accountID") {
+				filters = append(filters, data.ListRecipesFilterByAccountID{AccountID: uuid.MustParse(r.Form.Get("accountID"))})
 			}
 			if r.Form.Has("name") && r.Form.Get("name") != "" {
 				filters = append(filters, data.ListRecipesFilterByName{Name: r.FormValue("name")})
 			}
 			if len(filters) == 0 {
-				if err := templates.RecipeTable(userID, nil).Render(w); err != nil {
+				if err := templates.RecipeTable(accountID, nil).Render(w); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
@@ -109,16 +109,16 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 				return
 			}
 
-			if err := templates.RecipeTable(userID, recipes).Render(w); err != nil {
+			if err := templates.RecipeTable(accountID, recipes).Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		})
 		r.Route("/{recipeID}", func(r chi.Router) {
 			r.Get("/details", func(w http.ResponseWriter, r *http.Request) {
-				userID, err := GetUserIDRequestCookie(r)
+				accountID, err := GetAccountIDRequestCookie(r)
 				if err != nil {
-					Error(w, "Getting user id", err, http.StatusUnauthorized)
+					Error(w, "Getting account id", err, http.StatusUnauthorized)
 					return
 				}
 
@@ -131,15 +131,15 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 					}
 				}
 
-				if err := templates.RecipeDetailsForm(userID, recipe).Render(w); err != nil {
+				if err := templates.RecipeDetailsForm(accountID, recipe).Render(w); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 			})
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-				userID, err := GetUserIDRequestCookie(r)
+				accountID, err := GetAccountIDRequestCookie(r)
 				if err != nil {
-					Error(w, "Getting user id", err, http.StatusUnauthorized)
+					Error(w, "Getting account id", err, http.StatusUnauthorized)
 					return
 				}
 				recipeID := uuid.Must(uuid.Parse(chi.URLParam(r, "recipeID")))
@@ -147,7 +147,7 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 				if recipe, err := repo.GetRecipe(r.Context(), recipeID); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
-				} else if recipe.UserID != userID {
+				} else if recipe.AccountID != accountID {
 					http.Error(w, "Can't delete recipes you didn't create", http.StatusBadRequest)
 					return
 				}

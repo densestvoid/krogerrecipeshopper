@@ -138,7 +138,7 @@ func Menu() gomponents.Node {
 							html.Hr(html.Class("align-self-center w-75")),
 							html.Div(
 								html.Class("align-self-center w-75"),
-								// html.A(html.Class("btn btn-secondary w-100 my-2"), html.Href("/users/{{.Session.UserID}}"), gomponents.Text("Account")),
+								// html.A(html.Class("btn btn-secondary w-100 my-2"), html.Href("/users/{{.Session.AccountID}}"), gomponents.Text("Account")),
 								// html.A(html.Class("btn btn-warning w-100 my-2"), html.Href("/users"), gomponents.Text("Admin")),
 								html.Button(html.Class("btn btn-danger w-100 my-2"), htmx.Post("/auth/logout"), htmx.Swap("none"), gomponents.Text("Logout")),
 							),

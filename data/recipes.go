@@ -10,30 +10,30 @@ import (
 
 type Recipe struct {
 	ID          uuid.UUID
-	UserID      uuid.UUID
+	AccountID   uuid.UUID
 	Name        string
 	Description string
 }
 
 func (m *Repository) GetRecipe(ctx context.Context, id uuid.UUID) (*Recipe, error) {
-	row := m.db.QueryRowContext(ctx, `SELECT id, user_id, name, description FROM recipes WHERE id = $1`, id)
+	row := m.db.QueryRowContext(ctx, `SELECT id, account_id, name, description FROM recipes WHERE id = $1`, id)
 	if err := row.Err(); err != nil {
 		return nil, err
 	}
 	var recipe Recipe
-	return &recipe, row.Scan(&recipe.ID, &recipe.UserID, &recipe.Name, &recipe.Description)
+	return &recipe, row.Scan(&recipe.ID, &recipe.AccountID, &recipe.Name, &recipe.Description)
 }
 
 type ListRecipesFilter interface {
 	listRecipoesFilter() string
 }
 
-type ListRecipesFilterByUserID struct {
-	UserID uuid.UUID
+type ListRecipesFilterByAccountID struct {
+	AccountID uuid.UUID
 }
 
-func (f ListRecipesFilterByUserID) listRecipoesFilter() string {
-	return fmt.Sprintf(`user_id = '%v'`, f.UserID)
+func (f ListRecipesFilterByAccountID) listRecipoesFilter() string {
+	return fmt.Sprintf(`account_id = '%v'`, f.AccountID)
 }
 
 type ListRecipesFilterByName struct {
@@ -45,7 +45,7 @@ func (f ListRecipesFilterByName) listRecipoesFilter() string {
 }
 
 func (m *Repository) ListRecipes(ctx context.Context, filters ...ListRecipesFilter) ([]Recipe, error) {
-	query := `SELECT id, user_id, name, description FROM recipes`
+	query := `SELECT id, account_id, name, description FROM recipes`
 	if len(filters) > 0 {
 		query += " WHERE "
 		filterStrings := []string{}
@@ -61,7 +61,7 @@ func (m *Repository) ListRecipes(ctx context.Context, filters ...ListRecipesFilt
 	var recipes []Recipe
 	for rows.Next() {
 		var recipe Recipe
-		if err := rows.Scan(&recipe.ID, &recipe.UserID, &recipe.Name, &recipe.Description); err != nil {
+		if err := rows.Scan(&recipe.ID, &recipe.AccountID, &recipe.Name, &recipe.Description); err != nil {
 			return nil, err
 		}
 		recipes = append(recipes, recipe)
@@ -69,8 +69,8 @@ func (m *Repository) ListRecipes(ctx context.Context, filters ...ListRecipesFilt
 	return recipes, nil
 }
 
-func (m *Repository) CreateRecipe(ctx context.Context, krogerUserID uuid.UUID, name, description string) (uuid.UUID, error) {
-	row := m.db.QueryRowContext(ctx, `INSERT INTO recipes(user_id, name, description) VALUES ($1, $2, $3) RETURNING id`, krogerUserID, name, description)
+func (m *Repository) CreateRecipe(ctx context.Context, accountID uuid.UUID, name, description string) (uuid.UUID, error) {
+	row := m.db.QueryRowContext(ctx, `INSERT INTO recipes(account_id, name, description) VALUES ($1, $2, $3) RETURNING id`, accountID, name, description)
 	if err := row.Err(); err != nil {
 		return uuid.Nil, err
 	}

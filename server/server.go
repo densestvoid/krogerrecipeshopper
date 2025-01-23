@@ -28,9 +28,9 @@ func New(ctx context.Context, logger *slog.Logger, config Config, repo *data.Rep
 	})
 	mux.Use(httplog.RequestLogger(chiLogger))
 
-	mux.Route("/auth", NewAuthMux(config))
+	mux.Route("/auth", NewAuthMux(config, repo))
 	mux.Group(func(r chi.Router) {
-		r.Use(AuthenticationMiddleware(config))
+		r.Use(AuthenticationMiddleware(config, repo))
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			if err := templates.DashboardPage().Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -28,13 +29,13 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 		})
 
 		r.Get("/table", func(w http.ResponseWriter, r *http.Request) {
-			userID, err := GetUserIDRequestCookie(r)
+			accountID, err := GetAccountIDRequestCookie(r)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
 
-			dataCartProducts, err := repo.ListCartProducts(r.Context(), userID)
+			dataCartProducts, err := repo.ListCartProducts(r.Context(), accountID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -112,9 +113,9 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 		})
 
 		r.Post("/recipe/{recipeID}", func(w http.ResponseWriter, r *http.Request) {
-			userID, err := GetUserIDRequestCookie(r)
+			accountID, err := GetAccountIDRequestCookie(r)
 			if err != nil {
-				Error(w, "Getting user id", err, http.StatusUnauthorized)
+				Error(w, "Getting account id", err, http.StatusUnauthorized)
 				return
 			}
 
@@ -124,8 +125,9 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 				Error(w, "Listing ingredients", err, http.StatusInternalServerError)
 				return
 			}
+			fmt.Println(accountID)
 			for _, ingredient := range ingredients {
-				if err := repo.AddCartProduct(r.Context(), userID, ingredient.ProductID, ingredient.Quantity, ingredient.Staple); err != nil {
+				if err := repo.AddCartProduct(r.Context(), accountID, ingredient.ProductID, ingredient.Quantity, ingredient.Staple); err != nil {
 					Error(w, "Adding cart product", err, http.StatusInternalServerError)
 					return
 				}
@@ -138,9 +140,9 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 
 		// Set product quantity in users cart
 		r.Put("/product", func(w http.ResponseWriter, r *http.Request) {
-			userID, err := GetUserIDRequestCookie(r)
+			accountID, err := GetAccountIDRequestCookie(r)
 			if err != nil {
-				Error(w, "Getting user id", err, http.StatusUnauthorized)
+				Error(w, "Getting account id", err, http.StatusUnauthorized)
 				return
 			}
 
@@ -154,7 +156,7 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 			}
 			quantityPercent := int(quantityFloat * 100)
 
-			if err := repo.SetCartProduct(r.Context(), userID, productID, &quantityPercent, nil); err != nil {
+			if err := repo.SetCartProduct(r.Context(), accountID, productID, &quantityPercent, nil); err != nil {
 				Error(w, "Updating cart product", err, http.StatusInternalServerError)
 				return
 			}
@@ -168,14 +170,14 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 		r.Route("/{productID}", func(r chi.Router) {
 			// Get cart product details
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				userID, err := GetUserIDRequestCookie(r)
+				accountID, err := GetAccountIDRequestCookie(r)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusUnauthorized)
 					return
 				}
 				productID := chi.URLParam(r, "productID")
 
-				cartProduct, err := repo.GetCartProduct(r.Context(), userID, productID)
+				cartProduct, err := repo.GetCartProduct(r.Context(), accountID, productID)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -189,14 +191,14 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 
 			// Remove product from users cart
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-				userID, err := GetUserIDRequestCookie(r)
+				accountID, err := GetAccountIDRequestCookie(r)
 				if err != nil {
-					Error(w, "Getting user id", err, http.StatusUnauthorized)
+					Error(w, "Getting account id", err, http.StatusUnauthorized)
 					return
 				}
 				productID := chi.URLParam(r, "productID")
 
-				if err := repo.RemoveCartProduct(r.Context(), userID, productID); err != nil {
+				if err := repo.RemoveCartProduct(r.Context(), accountID, productID); err != nil {
 					Error(w, "Removing cart product", err, http.StatusInternalServerError)
 					return
 				}
@@ -209,14 +211,14 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 
 			// Update product to be included in the products sent to the kroger cart
 			r.Post("/include", func(w http.ResponseWriter, r *http.Request) {
-				userID, err := GetUserIDRequestCookie(r)
+				accountID, err := GetAccountIDRequestCookie(r)
 				if err != nil {
-					Error(w, "Getting user id", err, http.StatusUnauthorized)
+					Error(w, "Getting account id", err, http.StatusUnauthorized)
 					return
 				}
 				productID := chi.URLParam(r, "productID")
 
-				if err := repo.SetCartProduct(r.Context(), userID, productID, nil, NewT(false)); err != nil {
+				if err := repo.SetCartProduct(r.Context(), accountID, productID, nil, NewT(false)); err != nil {
 					Error(w, "Updating cart product", err, http.StatusInternalServerError)
 					return
 				}
@@ -236,13 +238,13 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 			}
 			cartClient := kroger.NewCartClient(http.DefaultClient, kroger.PublicEnvironment, accessTokenCookie.Value)
 
-			userID, err := GetUserIDRequestCookie(r)
+			accountID, err := GetAccountIDRequestCookie(r)
 			if err != nil {
-				Error(w, "Getting user id", err, http.StatusUnauthorized)
+				Error(w, "Getting account id", err, http.StatusUnauthorized)
 				return
 			}
 
-			cartProducts, err := repo.ListCartProducts(r.Context(), userID, &data.ListCartProductsNonStaples{})
+			cartProducts, err := repo.ListCartProducts(r.Context(), accountID, &data.ListCartProductsNonStaples{})
 			if err != nil {
 				Error(w, "Listing cart products", err, http.StatusInternalServerError)
 				return
@@ -264,7 +266,7 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 				return
 			}
 
-			if err := repo.ClearCartProducts(r.Context(), userID); err != nil {
+			if err := repo.ClearCartProducts(r.Context(), accountID); err != nil {
 				Error(w, "Removing cart products", err, http.StatusInternalServerError)
 				return
 			}
