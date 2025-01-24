@@ -5,13 +5,20 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/densestvoid/krogerrecipeshopper/data"
 	"github.com/densestvoid/krogerrecipeshopper/kroger"
 	"github.com/densestvoid/krogerrecipeshopper/templates"
 )
 
-func NewProductsMux(config Config) func(chi.Router) {
+func NewProductsMux(config Config, repo *data.Repository) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Post("/search", func(w http.ResponseWriter, r *http.Request) {
+			accountID, err := GetAccountIDRequestCookie(r)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
 			authClient := kroger.NewAuthorizationClient(http.DefaultClient, kroger.PublicEnvironment, config.ClientID, config.ClientSecret)
 			authResp, err := authClient.PostToken(r.Context(), kroger.ClientCredentials{
 				Scope: kroger.ScopeProductCompact,
@@ -34,6 +41,12 @@ func NewProductsMux(config Config) func(chi.Router) {
 				return
 			}
 
+			account, err := repo.GetAccountByID(r.Context(), accountID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
 			var products []templates.Product
 			for _, product := range productsResp.Products {
 				var imageURL string
@@ -41,7 +54,7 @@ func NewProductsMux(config Config) func(chi.Router) {
 				for _, image := range product.Images {
 					if image.Featured {
 						for _, size := range image.Sizes {
-							if size.Size == "small" {
+							if size.Size == account.ImageSize {
 								imageURL = size.URL
 								break IMAGELOOP
 							}

@@ -37,8 +37,10 @@ func New(ctx context.Context, logger *slog.Logger, config Config, repo *data.Rep
 				return
 			}
 		})
+		r.Route("/accounts", NewAccountMux(repo))
+		r.Route("/profiles", NewProfilesMux(repo))
 		r.Route("/recipes", NewRecipesMux(config, repo))
-		r.Route("/products", NewProductsMux(config))
+		r.Route("/products", NewProductsMux(config, repo))
 		r.Route("/cart", NewCartMux(repo, config))
 	})
 

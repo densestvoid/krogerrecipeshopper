@@ -118,7 +118,12 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 					},
 					LocationID: nil,
 				})
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 
+				account, err := repo.GetAccountByID(r.Context(), accountID)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -132,7 +137,7 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 							for _, image := range product.Images {
 								if image.Featured {
 									for _, size := range image.Sizes {
-										if size.Size == "small" {
+										if size.Size == account.ImageSize {
 											imageURL = size.URL
 											break IMAGELOOP
 										}

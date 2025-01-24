@@ -34,7 +34,7 @@ func NewAuthMux(config Config, repo *data.Repository) func(r chi.Router) {
 				http.Error(w, fmt.Sprintf("Unable to get kroger profile id: %v", err), http.StatusInternalServerError)
 				return
 			}
-			account, err := repo.GetAccountID(r.Context(), profileResp.Profile.ID)
+			account, err := repo.GetAccountByKrogerProfileID(r.Context(), profileResp.Profile.ID)
 			if errors.Is(err, sql.ErrNoRows) {
 				// This is the user's first time logging in
 				if account, err = repo.CreateAccount(r.Context(), profileResp.Profile.ID); err != nil {
@@ -122,7 +122,7 @@ func AuthenticationMiddleware(config Config, repo *data.Repository) func(next ht
 					http.Error(w, fmt.Sprintf("Unable to get kroger profile id: %v", err), http.StatusInternalServerError)
 					return
 				}
-				account, err := repo.GetAccountID(r.Context(), profileResp.Profile.ID)
+				account, err := repo.GetAccountByKrogerProfileID(r.Context(), profileResp.Profile.ID)
 				// Refrsh token exists, the user has logged in before and should have an account already
 				if err != nil {
 					http.Error(w, fmt.Sprintf("Unable to get account: %v", err), http.StatusInternalServerError)
