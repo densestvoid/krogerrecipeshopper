@@ -133,7 +133,7 @@ func Settings(account data.Account) gomponents.Node {
 			),
 			html.Div(
 				html.Class("card-body"),
-				Select("imageSize", account.ImageSize, []string{
+				Select("accountImageSize", "Image size", "imageSize", account.ImageSize, []string{
 					data.ImageSizeThumbnail,
 					data.ImageSizeSmall,
 					data.ImageSizeMedium,
@@ -153,7 +153,7 @@ func Settings(account data.Account) gomponents.Node {
 	)
 }
 
-func Select[T comparable](name string, selected T, values []T) gomponents.Node {
+func Select[T comparable](id, label, name string, selected T, values []T) gomponents.Node {
 	var options gomponents.Group
 	for _, value := range values {
 		options = append(options, html.Option(
@@ -161,10 +161,18 @@ func Select[T comparable](name string, selected T, values []T) gomponents.Node {
 			html.Value(fmt.Sprintf("%v", value)),
 			gomponents.Textf("%v", value)))
 	}
-	return html.Select(
-		html.Class("form-select"),
-		html.Name("imageSize"),
-		options,
+	return html.Div(
+		html.Class("form-floating"),
+		html.Select(
+			html.ID(id),
+			html.Class("form-select"),
+			html.Name(name),
+			options,
+		),
+		html.Label(
+			html.For(id),
+			gomponents.Text(label),
+		),
 	)
 }
 

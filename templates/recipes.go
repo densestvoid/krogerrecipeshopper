@@ -113,6 +113,11 @@ func RecipeDetailsForm(accountID uuid.UUID, recipe *data.Recipe) gomponents.Node
 				html.Value(recipe.Description),
 				Disabled(accountID != recipe.AccountID),
 			)),
+			gomponents.If(accountID == recipe.AccountID, Select("recipeVisibility", "Visibility", "visibility", recipe.Visibility, []string{
+				data.VisibilityPublic,
+				data.VisibilityFriends,
+				data.VisibilityPrivate,
+			})),
 		}
 	}
 	return gomponents.Group{
@@ -128,6 +133,11 @@ func RecipeDetailsForm(accountID uuid.UUID, recipe *data.Recipe) gomponents.Node
 			html.Type("text"),
 			html.Name("description"),
 		)),
+		Select("recipeVisibility", "Visibility", "visibility", data.VisibilityPublic, []string{
+			data.VisibilityPrivate,
+			data.VisibilityFriends,
+			data.VisibilityPublic,
+		}),
 	}
 }
 
