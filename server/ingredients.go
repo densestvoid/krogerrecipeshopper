@@ -33,6 +33,7 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			w.WriteHeader(http.StatusOK)
 		})
 
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
@@ -170,6 +171,7 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			w.WriteHeader(http.StatusOK)
 		})
 
 		r.Route("/{productID}", func(r chi.Router) {
@@ -190,6 +192,7 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
+				w.WriteHeader(http.StatusOK)
 			})
 
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {

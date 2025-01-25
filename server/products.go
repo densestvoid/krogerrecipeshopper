@@ -79,6 +79,7 @@ func NewProductsMux(config Config, repo *data.Repository) func(chi.Router) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			w.WriteHeader(http.StatusOK)
 		})
 	}
 }

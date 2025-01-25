@@ -24,12 +24,14 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			w.WriteHeader(http.StatusOK)
 		})
 		r.Get("/explore", func(w http.ResponseWriter, r *http.Request) {
 			if err := templates.ExploreRecipes().Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			w.WriteHeader(http.StatusOK)
 		})
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
 			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
@@ -111,6 +113,7 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			w.WriteHeader(http.StatusOK)
 		})
 		r.Route("/{recipeID}", func(r chi.Router) {
 			r.Get("/details", func(w http.ResponseWriter, r *http.Request) {
@@ -133,6 +136,7 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
+				w.WriteHeader(http.StatusOK)
 			})
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
 				accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)

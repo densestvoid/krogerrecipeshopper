@@ -26,6 +26,7 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			w.WriteHeader(http.StatusOK)
 		})
 
 		r.Get("/table", func(w http.ResponseWriter, r *http.Request) {
@@ -115,6 +116,7 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			w.WriteHeader(http.StatusOK)
 		})
 
 		r.Post("/recipe/{recipeID}", func(w http.ResponseWriter, r *http.Request) {
@@ -186,6 +188,7 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
+				w.WriteHeader(http.StatusOK)
 			})
 
 			// Remove product from users cart

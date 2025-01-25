@@ -35,6 +35,7 @@ func NewAccountMux(repo *data.Repository) func(r chi.Router) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			w.WriteHeader(http.StatusOK)
 		})
 
 		r.Get("/profiles", func(w http.ResponseWriter, r *http.Request) {
@@ -48,6 +49,7 @@ func NewAccountMux(repo *data.Repository) func(r chi.Router) {
 				http.Error(w, fmt.Sprintf("writing profiles page: %v", err), http.StatusInternalServerError)
 				return
 			}
+			w.WriteHeader(http.StatusOK)
 		})
 
 		r.Route("/{accountID}", func(r chi.Router) {
@@ -82,6 +84,7 @@ func NewAccountMux(repo *data.Repository) func(r chi.Router) {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
 					}
+					w.WriteHeader(http.StatusOK)
 				})
 
 				r.Post("/", func(w http.ResponseWriter, r *http.Request) {
@@ -93,6 +96,7 @@ func NewAccountMux(repo *data.Repository) func(r chi.Router) {
 						return
 					}
 					w.Header().Add("HX-Trigger", "profile-update")
+					w.WriteHeader(http.StatusOK)
 				})
 
 				r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
@@ -105,6 +109,7 @@ func NewAccountMux(repo *data.Repository) func(r chi.Router) {
 					}
 
 					w.Header().Add("HX-Trigger", "profile-update")
+					w.WriteHeader(http.StatusOK)
 				})
 
 				r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
@@ -114,6 +119,7 @@ func NewAccountMux(repo *data.Repository) func(r chi.Router) {
 						return
 					}
 					w.Header().Add("HX-Trigger", "profile-update")
+					w.WriteHeader(http.StatusOK)
 				})
 			})
 		})
@@ -138,6 +144,7 @@ func NewProfilesMux(repo *data.Repository) func(r chi.Router) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			w.WriteHeader(http.StatusOK)
 		})
 	}
 }

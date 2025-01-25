@@ -35,6 +35,7 @@ func New(ctx context.Context, logger *slog.Logger, config Config, repo *data.Rep
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+			w.WriteHeader(http.StatusOK)
 		})
 		r.Route("/accounts", NewAccountMux(repo))
 		r.Route("/profiles", NewProfilesMux(repo))
