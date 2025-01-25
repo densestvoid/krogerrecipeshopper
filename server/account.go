@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/densestvoid/krogerrecipeshopper/data"
@@ -14,19 +15,19 @@ func NewAccountMux(repo *data.Repository) func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 			if err != nil {
-				Error(w, "Getting account id", err, http.StatusUnauthorized)
+				http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
 				return
 			}
 
 			account, err := repo.GetAccountByID(r.Context(), accountID)
 			if err != nil {
-				Error(w, "Getting account", err, http.StatusInternalServerError)
+				http.Error(w, fmt.Sprintf("getting account: %v", err), http.StatusInternalServerError)
 				return
 			}
 
 			profile, err := repo.GetProfileByAccountID(r.Context(), accountID)
 			if err != nil {
-				Error(w, "Getting profile", err, http.StatusInternalServerError)
+				http.Error(w, fmt.Sprintf("getting profile: %v", err), http.StatusInternalServerError)
 				return
 			}
 
@@ -39,12 +40,12 @@ func NewAccountMux(repo *data.Repository) func(r chi.Router) {
 		r.Get("/profiles", func(w http.ResponseWriter, r *http.Request) {
 			profiles, err := repo.ListProfiles(r.Context())
 			if err != nil {
-				Error(w, "Getting profiles", err, http.StatusInternalServerError)
+				http.Error(w, fmt.Sprintf("getting profiles: %v", err), http.StatusInternalServerError)
 				return
 			}
 
 			if err := templates.Profiles(profiles).Render(w); err != nil {
-				Error(w, "Getting profiles", err, http.StatusInternalServerError)
+				http.Error(w, fmt.Sprintf("writing profiles page: %v", err), http.StatusInternalServerError)
 				return
 			}
 		})
@@ -52,17 +53,13 @@ func NewAccountMux(repo *data.Repository) func(r chi.Router) {
 		r.Route("/{accountID}", func(r chi.Router) {
 			r.Patch("/settings", func(w http.ResponseWriter, r *http.Request) {
 				r.ParseForm()
-
 				accountID := uuid.MustParse(chi.URLParam(r, "accountID"))
 				imageSize := r.FormValue("imageSize")
 				if err := repo.UpdateAccountImageSize(r.Context(), accountID, imageSize); err != nil {
-					Error(w, "Updating account image size", err, http.StatusInternalServerError)
+					http.Error(w, fmt.Sprintf("updating account image size: %v", err), http.StatusInternalServerError)
 					return
 				}
-
-				if err := templates.Alert("Success", "alert-success").Render(w); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-				}
+				w.WriteHeader(http.StatusOK)
 			})
 
 			r.Route("/profile", func(r chi.Router) {
@@ -71,13 +68,13 @@ func NewAccountMux(repo *data.Repository) func(r chi.Router) {
 
 					account, err := repo.GetAccountByID(r.Context(), accountID)
 					if err != nil {
-						Error(w, "Getting account", err, http.StatusInternalServerError)
+						http.Error(w, fmt.Sprintf("getting account: %v", err), http.StatusInternalServerError)
 						return
 					}
 
 					profile, err := repo.GetProfileByAccountID(r.Context(), accountID)
 					if err != nil {
-						Error(w, "Getting profile", err, http.StatusInternalServerError)
+						http.Error(w, fmt.Sprintf("getting profile: %v", err), http.StatusInternalServerError)
 						return
 					}
 
@@ -88,52 +85,35 @@ func NewAccountMux(repo *data.Repository) func(r chi.Router) {
 				})
 
 				r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-					accountID := uuid.MustParse(chi.URLParam(r, "accountID"))
-
 					r.ParseForm()
-
+					accountID := uuid.MustParse(chi.URLParam(r, "accountID"))
 					displayName := r.FormValue("displayName")
-
 					if _, err := repo.CreateProfile(r.Context(), accountID, displayName); err != nil {
-						Error(w, "Creating profile", err, http.StatusInternalServerError)
+						http.Error(w, fmt.Sprintf("creating profile: %v", err), http.StatusInternalServerError)
 						return
 					}
-
 					w.Header().Add("HX-Trigger", "profile-update")
-					if err := templates.Alert("Success", "alert-success").Render(w); err != nil {
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-					}
 				})
 
 				r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
-					accountID := uuid.MustParse(chi.URLParam(r, "accountID"))
-
 					r.ParseForm()
-
+					accountID := uuid.MustParse(chi.URLParam(r, "accountID"))
 					displayName := r.FormValue("displayName")
-
 					if err := repo.UpdateProfileDisplayName(r.Context(), accountID, displayName); err != nil {
-						Error(w, "Updating profile", err, http.StatusInternalServerError)
+						http.Error(w, fmt.Sprintf("updating profile: %v", err), http.StatusInternalServerError)
 						return
 					}
 
 					w.Header().Add("HX-Trigger", "profile-update")
-					if err := templates.Alert("Success", "alert-success").Render(w); err != nil {
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-					}
 				})
 
 				r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
 					accountID := uuid.MustParse(chi.URLParam(r, "accountID"))
 					if err := repo.DeleteProfile(r.Context(), accountID); err != nil {
-						Error(w, "Deleting profile", err, http.StatusInternalServerError)
+						http.Error(w, fmt.Sprintf("deleting profile: %v", err), http.StatusInternalServerError)
 						return
 					}
-
 					w.Header().Add("HX-Trigger", "profile-update")
-					if err := templates.Alert("Success", "alert-success").Render(w); err != nil {
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-					}
 				})
 			})
 		})
@@ -147,7 +127,7 @@ func NewProfilesMux(repo *data.Repository) func(r chi.Router) {
 
 			profile, err := repo.GetProfileByAccountID(r.Context(), accountID)
 			if err != nil {
-				Error(w, "Getting profile", err, http.StatusInternalServerError)
+				http.Error(w, fmt.Sprintf("getting profile: %v", err), http.StatusInternalServerError)
 				return
 			} else if profile == nil {
 				http.Error(w, "No profile found for this account", http.StatusInternalServerError)

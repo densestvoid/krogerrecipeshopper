@@ -34,7 +34,7 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
 			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 			if err != nil {
-				Error(w, "Getting account id", err, http.StatusUnauthorized)
+				http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
 				return
 			}
 
@@ -42,20 +42,20 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 
 			name := r.FormValue("name")
 			if name == "" {
-				Error(w, "Name missing", nil, http.StatusBadRequest)
+				http.Error(w, fmt.Sprintf("name missing: %v", err), http.StatusBadRequest)
 				return
 			}
 
 			description := r.FormValue("description")
 			if description == "" {
-				Error(w, "Description missing", nil, http.StatusBadRequest)
+				http.Error(w, fmt.Sprintf("description missing: %v", err), http.StatusBadRequest)
 				return
 			}
 
 			if r.PostForm.Has("id") {
 				id, err := uuid.Parse(r.PostForm.Get("id"))
 				if err != nil {
-					Error(w, "Parsing recipe id", err, http.StatusBadRequest)
+					http.Error(w, fmt.Sprintf("parsing recipe id: %v", err), http.StatusBadRequest)
 					return
 				}
 
@@ -65,26 +65,23 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 					Name:        name,
 					Description: description,
 				}); err != nil {
-					Error(w, "Updating recipe", err, http.StatusInternalServerError)
+					http.Error(w, fmt.Sprintf("updating recipe: %v", err), http.StatusInternalServerError)
 					return
 				}
 			} else {
 				_, err := repo.CreateRecipe(r.Context(), accountID, name, description)
 				if err != nil {
-					Error(w, "Creating recipe", err, http.StatusInternalServerError)
+					http.Error(w, fmt.Sprintf("creating recipe: %v", err), http.StatusInternalServerError)
 					return
 				}
 			}
-
 			w.Header().Add("HX-Trigger", "recipe-update")
-			if err := templates.Alert("Success", "alert-success").Render(w); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
+			w.WriteHeader(http.StatusOK)
 		})
 		r.Post("/search", func(w http.ResponseWriter, r *http.Request) {
 			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 			if err != nil {
-				Error(w, "Getting account id", err, http.StatusUnauthorized)
+				http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
 				return
 			}
 
@@ -119,7 +116,7 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 			r.Get("/details", func(w http.ResponseWriter, r *http.Request) {
 				accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 				if err != nil {
-					Error(w, "Getting account id", err, http.StatusUnauthorized)
+					http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
 					return
 				}
 
@@ -140,7 +137,7 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
 				accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 				if err != nil {
-					Error(w, "Getting account id", err, http.StatusUnauthorized)
+					http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
 					return
 				}
 				recipeID := uuid.Must(uuid.Parse(chi.URLParam(r, "recipeID")))
@@ -154,14 +151,12 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 				}
 
 				if err := repo.DeleteRecipe(r.Context(), recipeID); err != nil {
-					Error(w, "Deleting recipe", err, http.StatusInternalServerError)
+					http.Error(w, fmt.Sprintf("deleting recipe: %v", err), http.StatusInternalServerError)
 					return
 				}
 
 				w.Header().Add("HX-Trigger", "recipe-update")
-				if err := templates.Alert("Success", "alert-success").Render(w); err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-				}
+				w.WriteHeader(http.StatusOK)
 			})
 			r.Route("/ingredients", NewIngredientMux(config, repo))
 		})

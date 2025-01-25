@@ -89,17 +89,36 @@ func NewErrorStatusMiddleware() func(http.Handler) http.Handler {
 			next.ServeHTTP(&writer, r)
 			statusCode := writer.statusCode
 
-			if 400 <= statusCode && statusCode <= 599 {
-				writer.Abort()
+			switch {
+			case 400 <= statusCode && statusCode <= 599:
+				defer writer.Abort()
 				w.WriteHeader(statusCode)
-				if err := templates.ErrorPage(statusCode, http.StatusText(statusCode)).Render(w); err != nil {
-					slog.Error("writing error page", slog.String("error", err.Error()))
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
+				if r.Header.Get("HX-Request") != "" {
+					slog.Error("sending htmx response", slog.String("error", string(writer.bs)))
+					if err := templates.Alert("Failed", "alert-danger").Render(w); err != nil {
+						slog.Error("writing error alert", slog.String("error", err.Error()))
+						http.Error(w, err.Error(), statusCode)
+						return
+					}
+				} else {
+					slog.Error("sending page response", slog.String("error", string(writer.bs)))
+					if err := templates.ErrorPage(statusCode, http.StatusText(statusCode)).Render(w); err != nil {
+						slog.Error("writing error page", slog.String("error", err.Error()))
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
 				}
 				return
+			default:
+				writer.Commit()
+				if r.Header.Get("HX-Request") != "" && len(writer.bs) == 0 {
+					if err := templates.Alert("Success", "alert-success").Render(w); err != nil {
+						slog.Error("writing error alert", slog.String("error", err.Error()))
+						http.Error(w, err.Error(), statusCode)
+						return
+					}
+				}
 			}
-			writer.Commit()
 		})
 	}
 }

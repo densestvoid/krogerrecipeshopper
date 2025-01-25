@@ -45,10 +45,3 @@ func New(ctx context.Context, logger *slog.Logger, config Config, repo *data.Rep
 
 	return mux
 }
-
-func Error(w http.ResponseWriter, message string, err error, statusCode int) {
-	slog.Error(message, "error", err)
-	if err := templates.Alert("Failed", "alert-danger").Render(w); err != nil {
-		http.Error(w, err.Error(), statusCode)
-	}
-}

@@ -1,5 +1,4 @@
 [Service]
 Type=oneshot
-WorkingDirectory=/opt/kroger-recipes
 ExecStartPre=/opt/kroger-recipes/server -c /root/kroger-recipes.json migrate up
-ExecStart=/usr/bin/systemctl restart kroger-recipe.service
+ExecStart=/usr/bin/systemctl restart kroger-recipes.service

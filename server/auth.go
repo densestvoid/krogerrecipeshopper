@@ -93,21 +93,18 @@ func (c Config) RedirectUrl() string {
 	return fmt.Sprintf("%s/auth", c.Domain)
 }
 
-func LoginRedirect(config Config, scopes ...string) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		scopesURIEncoded := url.QueryEscape(strings.Join(scopes, " "))
-		redirectURL := fmt.Sprintf("%s/authorize?client_id=%s&redirect_uri=%s&response_type=code&scope=%s",
-			kroger.OAuth2BaseURL,
-			config.ClientID,
-			config.RedirectUrl(),
-			scopesURIEncoded,
-		)
-		http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
-	}
+func LoginRedirectURL(config Config, scopes ...string) string {
+	scopesURIEncoded := url.QueryEscape(strings.Join(scopes, " "))
+	return fmt.Sprintf("%s/authorize?client_id=%s&redirect_uri=%s&response_type=code&scope=%s",
+		kroger.OAuth2BaseURL,
+		config.ClientID,
+		config.RedirectUrl(),
+		scopesURIEncoded,
+	)
 }
 
 func AuthenticationMiddleware(config Config, repo *data.Repository) func(next http.Handler) http.Handler {
-	loginRedirect := LoginRedirect(config, kroger.ScopeCartBasicWrite, kroger.ScopeProfileCompact)
+	loginRedirectURL := LoginRedirectURL(config, kroger.ScopeCartBasicWrite, kroger.ScopeProfileCompact)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if token, err := r.Cookie("accessToken"); err == nil && token.Value != "" && token.Valid() == nil {
@@ -120,7 +117,11 @@ func AuthenticationMiddleware(config Config, repo *data.Repository) func(next ht
 				})
 				if err != nil {
 					slog.Error("failed to reauthenticate user with refresh token", "error", err)
-					loginRedirect(w, r)
+					if r.Header.Get("HX-Request") != "" {
+						w.Header().Add("HX-Redirect", loginRedirectURL)
+					} else {
+						http.Redirect(w, r, loginRedirectURL, http.StatusTemporaryRedirect)
+					}
 					return
 				}
 				identityClient := kroger.NewIdentityClient(http.DefaultClient, kroger.PublicEnvironment, authResp.AccessToken)
@@ -141,10 +142,14 @@ func AuthenticationMiddleware(config Config, repo *data.Repository) func(next ht
 					return
 				}
 				SetAuthResponseCookies(r.Context(), w, session, authResp)
-				http.Redirect(w, r, r.RequestURI, http.StatusTemporaryRedirect)
+				next.ServeHTTP(w, r)
 				return
 			}
-			loginRedirect(w, r)
+			if r.Header.Get("HX-Request") != "" {
+				w.Header().Add("HX-Redirect", loginRedirectURL)
+			} else {
+				http.Redirect(w, r, loginRedirectURL, http.StatusTemporaryRedirect)
+			}
 		})
 	}
 }
