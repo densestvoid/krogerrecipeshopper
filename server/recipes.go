@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -15,7 +16,7 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 			if err != nil {
-				Error(w, "Getting account id", err, http.StatusUnauthorized)
+				http.Error(w, fmt.Sprintf("getting account ID: %v", err), http.StatusUnauthorized)
 				return
 			}
 
