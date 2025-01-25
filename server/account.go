@@ -12,7 +12,7 @@ import (
 func NewAccountMux(repo *data.Repository) func(r chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDRequestCookie(r)
+			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 			if err != nil {
 				Error(w, "Getting account id", err, http.StatusUnauthorized)
 				return

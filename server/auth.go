@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -45,7 +46,12 @@ func NewAuthMux(config Config, repo *data.Repository) func(r chi.Router) {
 				http.Error(w, fmt.Sprintf("Unable to get account: %v", err), http.StatusInternalServerError)
 				return
 			}
-			SetAuthResponseCookies(r.Context(), w, account, authResp)
+			session, err := repo.CreateSession(r.Context(), account.ID)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Unable to create session: %v", err), http.StatusInternalServerError)
+				return
+			}
+			SetAuthResponseCookies(r.Context(), w, session, authResp)
 			http.Redirect(w, r, "/", http.StatusFound)
 		})
 
@@ -70,7 +76,7 @@ func NewAuthMux(config Config, repo *data.Repository) func(r chi.Router) {
 			})
 			http.SetCookie(w, &http.Cookie{
 				Path:     "/",
-				Name:     "accountID",
+				Name:     "sessionID",
 				Value:    "",
 				Expires:  time.Now(),
 				Secure:   true,
@@ -113,6 +119,7 @@ func AuthenticationMiddleware(config Config, repo *data.Repository) func(next ht
 					RefreshToken: token.Value,
 				})
 				if err != nil {
+					slog.Error("failed to reauthenticate user with refresh token", "error", err)
 					loginRedirect(w, r)
 					return
 				}
@@ -128,7 +135,12 @@ func AuthenticationMiddleware(config Config, repo *data.Repository) func(next ht
 					http.Error(w, fmt.Sprintf("Unable to get account: %v", err), http.StatusInternalServerError)
 					return
 				}
-				SetAuthResponseCookies(r.Context(), w, account, authResp)
+				session, err := repo.CreateSession(r.Context(), account.ID)
+				if err != nil {
+					http.Error(w, fmt.Sprintf("Unable to create session: %v", err), http.StatusInternalServerError)
+					return
+				}
+				SetAuthResponseCookies(r.Context(), w, session, authResp)
 				http.Redirect(w, r, r.RequestURI, http.StatusTemporaryRedirect)
 				return
 			}
@@ -137,7 +149,7 @@ func AuthenticationMiddleware(config Config, repo *data.Repository) func(next ht
 	}
 }
 
-func SetAuthResponseCookies(ctx context.Context, w http.ResponseWriter, account data.Account, credentials *kroger.PostTokenResponse) error {
+func SetAuthResponseCookies(ctx context.Context, w http.ResponseWriter, session data.Session, credentials *kroger.PostTokenResponse) error {
 	http.SetCookie(w, &http.Cookie{
 		Path:     "/",
 		Name:     "accessToken",
@@ -157,8 +169,8 @@ func SetAuthResponseCookies(ctx context.Context, w http.ResponseWriter, account 
 	})
 	http.SetCookie(w, &http.Cookie{
 		Path:     "/",
-		Name:     "accountID",
-		Value:    account.ID.String(),
+		Name:     "sessionID",
+		Value:    session.ID.String(),
 		Secure:   true,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
@@ -166,16 +178,20 @@ func SetAuthResponseCookies(ctx context.Context, w http.ResponseWriter, account 
 	return nil
 }
 
-func GetAccountIDRequestCookie(r *http.Request) (uuid.UUID, error) {
-	var accountID uuid.UUID
-	if accountIDCookie, err := r.Cookie("accountID"); err != nil {
-		return uuid.Nil, fmt.Errorf("Account ID cookie not found: %w", err)
-	} else if err = accountIDCookie.Valid(); err != nil {
-		return uuid.Nil, fmt.Errorf("Invalid Account ID cookie: %w", err)
-	} else if accountIDCookie.Value == "" {
-		return uuid.Nil, fmt.Errorf("Account ID cookie empty")
-	} else if accountID, err = uuid.Parse(accountIDCookie.Value); err != nil {
-		return uuid.Nil, fmt.Errorf("Invalid Account ID: %w", err)
+func GetAccountIDFromRequestSessionCookie(repo *data.Repository, r *http.Request) (uuid.UUID, error) {
+	var sessionID uuid.UUID
+	if sessionIDCookie, err := r.Cookie("sessionID"); err != nil {
+		return uuid.Nil, fmt.Errorf("Session ID cookie not found: %w", err)
+	} else if err = sessionIDCookie.Valid(); err != nil {
+		return uuid.Nil, fmt.Errorf("Invalid Session ID cookie: %w", err)
+	} else if sessionIDCookie.Value == "" {
+		return uuid.Nil, fmt.Errorf("Session ID cookie empty")
+	} else if sessionID, err = uuid.Parse(sessionIDCookie.Value); err != nil {
+		return uuid.Nil, fmt.Errorf("Invalid Session ID: %w", err)
 	}
-	return accountID, nil
+	session, err := repo.GetSessionByID(r.Context(), sessionID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("Unable to get session: %w", err)
+	}
+	return session.AccountID, nil
 }

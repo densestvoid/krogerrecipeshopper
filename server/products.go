@@ -13,7 +13,7 @@ import (
 func NewProductsMux(config Config, repo *data.Repository) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Post("/search", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDRequestCookie(r)
+			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return

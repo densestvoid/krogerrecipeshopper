@@ -13,7 +13,7 @@ import (
 func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDRequestCookie(r)
+			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 			if err != nil {
 				Error(w, "Getting account id", err, http.StatusUnauthorized)
 				return
@@ -31,7 +31,7 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 			}
 		})
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDRequestCookie(r)
+			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 			if err != nil {
 				Error(w, "Getting account id", err, http.StatusUnauthorized)
 				return
@@ -81,7 +81,7 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 			}
 		})
 		r.Post("/search", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDRequestCookie(r)
+			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 			if err != nil {
 				Error(w, "Getting account id", err, http.StatusUnauthorized)
 				return
@@ -116,7 +116,7 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 		})
 		r.Route("/{recipeID}", func(r chi.Router) {
 			r.Get("/details", func(w http.ResponseWriter, r *http.Request) {
-				accountID, err := GetAccountIDRequestCookie(r)
+				accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 				if err != nil {
 					Error(w, "Getting account id", err, http.StatusUnauthorized)
 					return
@@ -137,7 +137,7 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 				}
 			})
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-				accountID, err := GetAccountIDRequestCookie(r)
+				accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 				if err != nil {
 					Error(w, "Getting account id", err, http.StatusUnauthorized)
 					return

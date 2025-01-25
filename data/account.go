@@ -22,6 +22,11 @@ type Account struct {
 	ImageSize       string
 }
 
+type Session struct {
+	ID        uuid.UUID
+	AccountID uuid.UUID
+}
+
 type Profile struct {
 	AccountID   uuid.UUID
 	DisplayName string
@@ -52,6 +57,29 @@ func (r *Repository) GetAccountByID(ctx context.Context, id uuid.UUID) (Account,
 	}
 	var account Account
 	return account, row.Scan(&account.ID, &account.KrogerProfileID, &account.ImageSize)
+}
+
+func (r *Repository) CreateSession(ctx context.Context, accountID uuid.UUID) (Session, error) {
+	row := r.db.QueryRowContext(ctx, `INSERT INTO sessions(account_id) VALUES($1) RETURNING id, account_id`, accountID)
+	if err := row.Err(); err != nil {
+		return Session{}, err
+	}
+	var session Session
+	return session, row.Scan(&session.ID, &session.AccountID)
+}
+
+func (r *Repository) GetSessionByID(ctx context.Context, id uuid.UUID) (Session, error) {
+	row := r.db.QueryRowContext(ctx, `SELECT id, account_id FROM sessions WHERE id = $1`, id)
+	if err := row.Err(); err != nil {
+		return Session{}, err
+	}
+	var session Session
+	return session, row.Scan(&session.ID, &session.AccountID)
+}
+
+func (r *Repository) DeleteSession(ctx context.Context, id uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM sessions WHERE id = $1`, id)
+	return err
 }
 
 func (r *Repository) UpdateAccountImageSize(ctx context.Context, id uuid.UUID, imageSize string) error {

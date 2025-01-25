@@ -4,9 +4,11 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/httplog/v2"
+	"github.com/go-chi/httprate"
 
 	"github.com/densestvoid/krogerrecipeshopper/data"
 	"github.com/densestvoid/krogerrecipeshopper/templates"
@@ -27,6 +29,7 @@ func New(ctx context.Context, logger *slog.Logger, config Config, repo *data.Rep
 		ResponseHeaders: true,
 	})
 	mux.Use(httplog.RequestLogger(chiLogger))
+	mux.Use(httprate.LimitByIP(100, time.Minute))
 
 	mux.Route("/auth", NewAuthMux(config, repo))
 	mux.Group(func(r chi.Router) {

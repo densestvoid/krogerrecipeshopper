@@ -29,7 +29,7 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 		})
 
 		r.Get("/table", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDRequestCookie(r)
+			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
@@ -118,7 +118,7 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 		})
 
 		r.Post("/recipe/{recipeID}", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDRequestCookie(r)
+			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 			if err != nil {
 				Error(w, "Getting account id", err, http.StatusUnauthorized)
 				return
@@ -145,7 +145,7 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 
 		// Set product quantity in users cart
 		r.Put("/product", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDRequestCookie(r)
+			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 			if err != nil {
 				Error(w, "Getting account id", err, http.StatusUnauthorized)
 				return
@@ -175,7 +175,7 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 		r.Route("/{productID}", func(r chi.Router) {
 			// Get cart product details
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				accountID, err := GetAccountIDRequestCookie(r)
+				accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusUnauthorized)
 					return
@@ -196,7 +196,7 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 
 			// Remove product from users cart
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-				accountID, err := GetAccountIDRequestCookie(r)
+				accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 				if err != nil {
 					Error(w, "Getting account id", err, http.StatusUnauthorized)
 					return
@@ -216,7 +216,7 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 
 			// Update product to be included in the products sent to the kroger cart
 			r.Post("/include", func(w http.ResponseWriter, r *http.Request) {
-				accountID, err := GetAccountIDRequestCookie(r)
+				accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 				if err != nil {
 					Error(w, "Getting account id", err, http.StatusUnauthorized)
 					return
@@ -243,7 +243,7 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 			}
 			cartClient := kroger.NewCartClient(http.DefaultClient, kroger.PublicEnvironment, accessTokenCookie.Value)
 
-			accountID, err := GetAccountIDRequestCookie(r)
+			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
 			if err != nil {
 				Error(w, "Getting account id", err, http.StatusUnauthorized)
 				return
