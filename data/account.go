@@ -59,6 +59,51 @@ func (r *Repository) GetAccountByID(ctx context.Context, id uuid.UUID) (Account,
 	return account, row.Scan(&account.ID, &account.KrogerProfileID, &account.ImageSize)
 }
 
+func (r *Repository) DeleteAccount(ctx context.Context, id uuid.UUID) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Clear ingredients
+	if _, err := tx.ExecContext(ctx, `DELETE FROM ingredients USING recipes WHERE ingredients.recipe_id = recipes.id AND recipes.account_id = $1`, id); err != nil {
+		return err
+	}
+
+	// Clear recipes
+	if _, err := tx.ExecContext(ctx, `DELETE FROM recipes WHERE recipes.account_id = $1`, id); err != nil {
+		return err
+	}
+
+	// clear favorites
+	if _, err := tx.ExecContext(ctx, `DELETE FROM favorites WHERE favorites.account_id = $1`, id); err != nil {
+		return err
+	}
+
+	// Clear cart
+	if _, err := tx.ExecContext(ctx, `DELETE FROM cart_products WHERE cart_products.account_id = $1`, id); err != nil {
+		return err
+	}
+
+	// Clear profile
+	if _, err := tx.ExecContext(ctx, `DELETE FROM profiles WHERE profiles.account_id = $1`, id); err != nil {
+		return err
+	}
+
+	// Clear sessions
+	if _, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE sessions.account_id = $1`, id); err != nil {
+		return err
+	}
+
+	// Clear account
+	if _, err := tx.ExecContext(ctx, `DELETE FROM accounts WHERE accounts.id = $1`, id); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
 func (r *Repository) CreateSession(ctx context.Context, accountID uuid.UUID) (Session, error) {
 	row := r.db.QueryRowContext(ctx, `INSERT INTO sessions(account_id) VALUES($1) RETURNING id, account_id`, accountID)
 	if err := row.Err(); err != nil {

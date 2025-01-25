@@ -56,35 +56,7 @@ func NewAuthMux(config Config, repo *data.Repository) func(r chi.Router) {
 		})
 
 		r.Post("/logout", func(w http.ResponseWriter, r *http.Request) {
-			http.SetCookie(w, &http.Cookie{
-				Path:     "/",
-				Name:     "accessToken",
-				Value:    "",
-				Expires:  time.Now(),
-				Secure:   true,
-				HttpOnly: true,
-				SameSite: http.SameSiteLaxMode,
-			})
-			http.SetCookie(w, &http.Cookie{
-				Path:     "/",
-				Name:     "refreshToken",
-				Value:    "",
-				Expires:  time.Now(),
-				Secure:   true,
-				HttpOnly: true,
-				SameSite: http.SameSiteLaxMode,
-			})
-			http.SetCookie(w, &http.Cookie{
-				Path:     "/",
-				Name:     "sessionID",
-				Value:    "",
-				Expires:  time.Now(),
-				Secure:   true,
-				HttpOnly: true,
-				SameSite: http.SameSiteLaxMode,
-			})
-			w.Header().Add("HX-Refresh", "true")
-			w.WriteHeader(http.StatusOK)
+			ClearAuthCookies(w)
 		})
 	}
 }
@@ -181,6 +153,38 @@ func SetAuthResponseCookies(ctx context.Context, w http.ResponseWriter, session 
 		SameSite: http.SameSiteLaxMode,
 	})
 	return nil
+}
+
+func ClearAuthCookies(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Path:     "/",
+		Name:     "accessToken",
+		Value:    "",
+		Expires:  time.Now(),
+		Secure:   true,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Path:     "/",
+		Name:     "refreshToken",
+		Value:    "",
+		Expires:  time.Now(),
+		Secure:   true,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Path:     "/",
+		Name:     "sessionID",
+		Value:    "",
+		Expires:  time.Now(),
+		Secure:   true,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	w.Header().Add("HX-Refresh", "true")
+	w.WriteHeader(http.StatusOK)
 }
 
 func GetAccountIDFromRequestSessionCookie(repo *data.Repository, r *http.Request) (uuid.UUID, error) {

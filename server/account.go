@@ -53,6 +53,24 @@ func NewAccountMux(repo *data.Repository) func(r chi.Router) {
 		})
 
 		r.Route("/{accountID}", func(r chi.Router) {
+			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
+				callingAccountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+				if err != nil {
+					http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+					return
+				}
+				requestedAccountID := uuid.MustParse(chi.URLParam(r, "accountID"))
+				if callingAccountID != requestedAccountID {
+					http.Error(w, "deleting account", http.StatusUnauthorized)
+					return
+				}
+				if err := repo.DeleteAccount(r.Context(), requestedAccountID); err != nil {
+					http.Error(w, fmt.Sprintf("deleting account: %v", err), http.StatusInternalServerError)
+					return
+				}
+				ClearAuthCookies(w)
+			})
+
 			r.Patch("/settings", func(w http.ResponseWriter, r *http.Request) {
 				r.ParseForm()
 				accountID := uuid.MustParse(chi.URLParam(r, "accountID"))

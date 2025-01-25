@@ -25,6 +25,14 @@ func Account(account data.Account, profile *data.Profile) gomponents.Node {
 					Profile(account, profile),
 				),
 				Settings(account),
+				html.Button(
+					html.Type("button"),
+					html.Class("btn btn-danger"),
+					gomponents.Text("Delete account"),
+					htmx.Delete(fmt.Sprintf("/accounts/%s", account.ID)),
+					htmx.Swap("none"),
+					htmx.Confirm("Are you sure you want to delete this account? All data related to this account will be permanently deleted, and unrecoverable. If you sign back in with the same Kroger account, a new account will be created."),
+				),
 			),
 		),
 	})
