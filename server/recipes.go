@@ -54,7 +54,7 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 				return
 			}
 
-			visibility := r.FormValue("visiblity")
+			visibility := r.FormValue("visibility")
 			if visibility == "" {
 				http.Error(w, fmt.Sprintf("visibility missing: %v", err), http.StatusBadRequest)
 				return
@@ -110,7 +110,9 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 				return
 			}
 
-			recipes, err := repo.ListRecipes(r.Context(), accountID, filters...)
+			recipes, err := repo.ListRecipes(r.Context(), accountID, filters, []data.ListRecipesOrderBy{
+				{Field: "name", Direction: "asc"},
+			})
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return

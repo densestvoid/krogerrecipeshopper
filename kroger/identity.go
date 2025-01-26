@@ -32,7 +32,7 @@ func (client *IdentityClient) auth() string {
 }
 
 type GetProfileResponse struct {
-	Meta    Meta    `json:"meta:`
+	Meta    Meta    `json:"meta"`
 	Profile Profile `json:"data"`
 }
 

@@ -25,6 +25,7 @@ func baseHead(title, baseURL string) gomponents.Node {
 			html.Name("viewport"),
 			html.Content("width=device-width, initial-scale=1, user-scalable=no"),
 		),
+
 		// Bootstrap CSS
 		html.Link(
 			html.Href("https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"),
@@ -32,11 +33,13 @@ func baseHead(title, baseURL string) gomponents.Node {
 			html.Integrity("sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"),
 			html.CrossOrigin("anonymous"),
 		),
+
 		// Bootstrap Icons
 		html.Link(
 			html.Href("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"),
 			html.Rel("stylesheet"),
 		),
+
 		// Relative URLs base
 		html.Base(html.Href(baseURL)),
 	)
@@ -44,8 +47,6 @@ func baseHead(title, baseURL string) gomponents.Node {
 
 func baseBody(bodyNodes gomponents.Node) gomponents.Node {
 	return html.Body(
-		htmx.Ext("response-targets"),
-
 		// Menu
 		Menu(),
 
@@ -61,15 +62,8 @@ func baseBody(bodyNodes gomponents.Node) gomponents.Node {
 
 		// Custom page content
 		html.Div(
-			gomponents.Attr("hx-target-4*", "#alerts"),
-			gomponents.Attr("hx-target-5*", "#alerts"),
 			bodyNodes,
 		),
-
-		// HTMX
-		html.Script(html.Src("https://unpkg.com/htmx.org@2.0.4")),
-		html.Script(html.Src("https://unpkg.com/htmx-ext-remove-me@2.0.0/remove-me.js")), // Auto remove elements (alerts)
-		html.Script(html.Src("https://unpkg.com/htmx.org/dist/ext/response-targets.js")), // Allow swapping elements with error responses (alerts)
 
 		// Bootstrap JS
 		html.Script(
@@ -77,5 +71,9 @@ func baseBody(bodyNodes gomponents.Node) gomponents.Node {
 			html.Integrity("sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"),
 			html.CrossOrigin("anonymous"),
 		),
+
+		// HTMX
+		html.Script(html.Src("https://unpkg.com/htmx.org@2.0.4")),
+		html.Script(html.Src("https://unpkg.com/htmx-ext-remove-me@2.0.0/remove-me.js")), // Auto remove elements (alerts)
 	)
 }

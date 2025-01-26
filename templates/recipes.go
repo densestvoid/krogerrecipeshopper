@@ -32,25 +32,7 @@ func Recipes(accountID uuid.UUID) gomponents.Node {
 				"#recipe-details-form",
 			),
 		),
-		Modal("recipe-details-modal", "Edit recipe",
-			gomponents.Group{},
-			gomponents.Group{
-				html.Form(
-					html.ID("recipe-details-form"),
-				),
-			},
-			gomponents.Group{
-				html.Button(
-					html.Type("submit"),
-					html.Class("btn btn-primary"),
-					html.Data("bs-dismiss", "modal"),
-					gomponents.Text("Submit"),
-					htmx.Include("#recipe-details-form"),
-					htmx.Post("/recipes"),
-					htmx.Swap("none"),
-				),
-			},
-		),
+		Modal("recipe-details", "Edit recipe", htmx.Post("/recipes")),
 	})
 }
 
@@ -77,15 +59,7 @@ func ExploreRecipes() gomponents.Node {
 				html.Div(html.ID("recipes-search-table")),
 			),
 		),
-		Modal("recipe-details-modal", "View recipe",
-			gomponents.Group{},
-			gomponents.Group{
-				html.Form(
-					html.ID("recipe-details-form"),
-				),
-			},
-			gomponents.Group{},
-		),
+		Modal("recipe-details", "View recipe", nil),
 	})
 }
 
@@ -103,6 +77,7 @@ func RecipeDetailsForm(accountID uuid.UUID, recipe *data.Recipe) gomponents.Node
 				html.Type("text"),
 				html.Name("name"),
 				html.Value(recipe.Name),
+				html.Required(),
 				Disabled(accountID != recipe.AccountID),
 			)),
 			FormInput("recipe-description", "Recipe description", html.Input(
@@ -111,6 +86,7 @@ func RecipeDetailsForm(accountID uuid.UUID, recipe *data.Recipe) gomponents.Node
 				html.Type("text"),
 				html.Name("description"),
 				html.Value(recipe.Description),
+				html.Required(),
 				Disabled(accountID != recipe.AccountID),
 			)),
 			gomponents.If(accountID == recipe.AccountID, Select("recipeVisibility", "Visibility", "visibility", recipe.Visibility, []string{
@@ -126,12 +102,16 @@ func RecipeDetailsForm(accountID uuid.UUID, recipe *data.Recipe) gomponents.Node
 			html.Class("form-control"),
 			html.Type("text"),
 			html.Name("name"),
+			html.Required(),
+			htmx.Validate("true"), // Recuired due to the use of hx-include
 		)),
 		FormInput("recipe-description", "Recipe description", html.Input(
 			html.ID("recipe-description"),
 			html.Class("form-control"),
 			html.Type("text"),
 			html.Name("description"),
+			html.Required(),
+			htmx.Validate("true"), // Recuired due to the use of hx-include
 		)),
 		Select("recipeVisibility", "Visibility", "visibility", data.VisibilityPublic, []string{
 			data.VisibilityPrivate,

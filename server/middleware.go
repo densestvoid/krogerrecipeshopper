@@ -92,7 +92,6 @@ func NewErrorStatusMiddleware() func(http.Handler) http.Handler {
 			switch {
 			case 400 <= statusCode && statusCode <= 599:
 				defer writer.Abort()
-				w.WriteHeader(statusCode)
 				if r.Header.Get("HX-Request") != "" {
 					slog.Error("sending htmx response", slog.String("error", string(writer.bs)))
 					if err := templates.Alert("Failed", "alert-danger").Render(w); err != nil {

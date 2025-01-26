@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/url"
 )
@@ -111,7 +110,7 @@ func (e *AuthError) Error() string {
 	return fmt.Sprintf("Auth error: %s - %s", e.ErrorName, e.ErrorDescription)
 }
 
-type errors struct {
+type apiErrors struct {
 	Errors APIError `json:"errors"`
 }
 
@@ -136,8 +135,6 @@ func (p *HTTPResponseJSONParser) ParseHTTPResponse(resp *http.Response) error {
 		return err
 	}
 
-	slog.Debug(string(bs))
-
 	// Resettable read buffer
 	bytesReader := bytes.NewReader(bs)
 	decoder := json.NewDecoder(bytesReader)
@@ -153,9 +150,9 @@ func (p *HTTPResponseJSONParser) ParseHTTPResponse(resp *http.Response) error {
 	bytesReader.Seek(0, io.SeekStart)
 
 	// Check for API error
-	var apiError APIError
-	if err := decoder.Decode(&apiError); err == nil {
-		return &apiError
+	var apiErrors apiErrors
+	if err := decoder.Decode(&apiErrors); err == nil {
+		return &apiErrors.Errors
 	}
 
 	// Reset

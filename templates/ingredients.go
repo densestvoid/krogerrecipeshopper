@@ -31,25 +31,7 @@ func Ingredients(accountID uuid.UUID, recipe *data.Recipe) gomponents.Node {
 				"#ingredient-details-form",
 			)),
 		),
-		Modal("ingredient-details-modal", "Edit ingredient",
-			gomponents.Group{},
-			gomponents.Group{
-				html.Form(
-					html.ID("ingredient-details-form"),
-				),
-			},
-			gomponents.Group{
-				html.Button(
-					html.Type("submit"),
-					html.Class("btn btn-primary"),
-					html.Data("bs-dismiss", "modal"),
-					gomponents.Text("Submit"),
-					htmx.Include("#ingredient-details-form"),
-					htmx.Post(fmt.Sprintf("/recipes/%v/ingredients", recipe.ID)),
-					htmx.Swap("none"),
-				),
-			},
-		),
+		Modal("ingredient-details", "Edit ingredient", htmx.Post(fmt.Sprintf("/recipes/%v/ingredients", recipe.ID))),
 	})
 }
 
@@ -67,7 +49,8 @@ func IngredientDetailsForm(ingredient *data.Ingredient) gomponents.Node {
 				html.Type("number"),
 				html.Name("quantity"),
 				html.Min("0.01"),
-				html.Step("0.5"),
+				html.Step("0.01"),
+				html.Required(),
 				html.Value(fmt.Sprintf("%.2f", float64(ingredient.Quantity)/100)),
 			)),
 			FormCheck("ingredient-staple", "Ingredient staple", html.Input(
@@ -88,7 +71,8 @@ func IngredientDetailsForm(ingredient *data.Ingredient) gomponents.Node {
 			html.Type("number"),
 			html.Name("quantity"),
 			html.Min("0.01"),
-			html.Step("0.5"),
+			html.Step("0.01"),
+			html.Required(),
 		)),
 		FormCheck("ingredient-staple", "Ingredient staple", html.Input(
 			html.ID("ingredient-staple"),
@@ -110,17 +94,28 @@ func Checked(b bool) gomponents.Node {
 func ProductsSearch() gomponents.Node {
 	return html.Div(
 		html.H3(gomponents.Text("Search products")),
-		html.Input(
-			html.Class("form-control"),
-			html.Type("search"),
-			html.Name("search"),
-			html.Placeholder("Begin typing to seach products"),
-			htmx.Post("/products/search"),
-			htmx.Trigger("input changed delay:500ms, keyup[key=='Enter']"),
-			htmx.Target("#products-search-table"),
-			htmx.Indicator(".htmx-indicator"),
+		html.Div(
+			html.Form(
+				html.Input(
+					html.Class("form-control"),
+					html.Type("search"),
+					html.Name("search"),
+					html.Placeholder("Begin typing to seach products"),
+					htmx.Post("/products/search"),
+					htmx.Swap("innerHTML"),
+					htmx.Trigger("input changed delay:500ms, keyup[key=='Enter']"),
+					htmx.Target("#products-search-table"),
+					htmx.Indicator(".htmx-indicator"),
+				),
+			),
 		),
 		html.Span(html.Class("htmx-indicator"), gomponents.Text("Searching...")),
+		html.Input(
+			html.Class("d-none"),
+			html.Type("radio"),
+			html.Name("productID"),
+			html.Required(),
+		),
 		html.Div(html.ID("products-search-table")),
 	)
 }

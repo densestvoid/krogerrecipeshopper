@@ -31,25 +31,7 @@ func Cart() gomponents.Node {
 				htmx.Trigger("click"),
 			),
 		),
-		Modal("cart-product-details-modal", "Edit product",
-			gomponents.Group{},
-			gomponents.Group{
-				html.Form(
-					html.ID("cart-product-details-form"),
-				),
-			},
-			gomponents.Group{
-				html.Button(
-					html.Type("submit"),
-					html.Class("btn btn-primary"),
-					html.Data("bs-dismiss", "modal"),
-					gomponents.Text("Submit"),
-					htmx.Include("#cart-product-details-form"),
-					htmx.Put(fmt.Sprintf("/cart/product")),
-					htmx.Swap("none"),
-				),
-			},
-		),
+		Modal("cart-product-details", "Edit product", htmx.Put(fmt.Sprintf("/cart/product"))),
 	})
 }
 
@@ -66,7 +48,8 @@ func CartProductDetailsForm(cartProduct data.CartProduct) gomponents.Node {
 			html.Type("number"),
 			html.Name("quantity"),
 			html.Min("0.01"),
-			html.Step("0.5"),
+			html.Step("0.01"),
+			html.Required(),
 			html.Value(fmt.Sprintf("%.2f", float64(cartProduct.Quantity)/100)),
 		)),
 	}

@@ -51,7 +51,12 @@ func (f ListRecipesFilterByName) listRecipoesFilter() string {
 	return fmt.Sprintf(`name ILIKE '%%%s%%'`, f.Name)
 }
 
-func (m *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filters ...ListRecipesFilter) ([]Recipe, error) {
+type ListRecipesOrderBy struct {
+	Field     string
+	Direction string
+}
+
+func (m *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filters []ListRecipesFilter, orderBys []ListRecipesOrderBy) ([]Recipe, error) {
 	query := `SELECT id, account_id, name, description, visibility FROM recipes WHERE (account_id = $1 OR visibility = 'public')`
 	if len(filters) > 0 {
 		query += " AND "
@@ -61,6 +66,15 @@ func (m *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filte
 		}
 		query += strings.Join(filterStrings, " AND ")
 	}
+	if len(orderBys) > 0 {
+		query += " ORDER BY "
+		orderStrings := []string{}
+		for _, orderBy := range orderBys {
+			orderStrings = append(orderStrings, fmt.Sprintf("%s %s", orderBy.Field, orderBy.Direction))
+		}
+		query += strings.Join(orderStrings, ", ")
+	}
+
 	rows, err := m.db.QueryContext(ctx, query, accountID)
 	if err != nil {
 		return nil, err

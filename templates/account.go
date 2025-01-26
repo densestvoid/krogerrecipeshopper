@@ -215,14 +215,6 @@ func ProfilePage(profile data.Profile) gomponents.Node {
 				htmx.Trigger("load"),
 			),
 		),
-		Modal("recipe-details-modal", "View recipe",
-			gomponents.Group{},
-			gomponents.Group{
-				html.Form(
-					html.ID("recipe-details-form"),
-				),
-			},
-			gomponents.Group{},
-		),
+		Modal("recipe-details", "View recipe", nil),
 	})
 }
