@@ -42,8 +42,10 @@ func baseHead(title, baseURL string) gomponents.Node {
 	)
 }
 
-func baseBody(bodyNodes []gomponents.Node) gomponents.Node {
+func baseBody(bodyNodes gomponents.Node) gomponents.Node {
 	return html.Body(
+		htmx.Ext("response-targets"),
+
 		// Menu
 		Menu(),
 
@@ -58,11 +60,17 @@ func baseBody(bodyNodes []gomponents.Node) gomponents.Node {
 		),
 
 		// Custom page content
-		gomponents.Group(bodyNodes),
+		html.Div(
+			gomponents.Attr("hx-target-4*", "#alerts"),
+			gomponents.Attr("hx-target-5*", "#alerts"),
+			bodyNodes,
+		),
 
 		// HTMX
 		html.Script(html.Src("https://unpkg.com/htmx.org@2.0.4")),
 		html.Script(html.Src("https://unpkg.com/htmx-ext-remove-me@2.0.0/remove-me.js")), // Auto remove elements (alerts)
+		html.Script(html.Src("https://unpkg.com/htmx.org/dist/ext/response-targets.js")), // Allow swapping elements with error responses (alerts)
+
 		// Bootstrap JS
 		html.Script(
 			html.Src("https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"),

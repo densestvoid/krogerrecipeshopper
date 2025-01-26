@@ -54,7 +54,7 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 				return
 			}
 
-			visibility := r.FormValue("visibility")
+			visibility := r.FormValue("visiblity")
 			if visibility == "" {
 				http.Error(w, fmt.Sprintf("visibility missing: %v", err), http.StatusBadRequest)
 				return
