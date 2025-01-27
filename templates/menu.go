@@ -114,26 +114,26 @@ func Menu() gomponents.Node {
 									html.Href("/"),
 									gomponents.Text("Home"),
 								),
-								html.A(
-									html.Class("btn btn-secondary w-100 my-2"),
-									html.Href("/recipes/explore"),
-									gomponents.Text("Explore"),
+								html.Div(
+									html.Class("dropdown"),
+									html.Button(
+										html.Type("button"),
+										html.Class("btn btn-secondary dropdown-toggle w-100 my-2"),
+										html.Data("bs-toggle", "dropdown"),
+										gomponents.Text("Recipes"),
+									),
+									html.Ul(
+										html.Class("dropdown-menu"),
+										html.Li(html.A(html.Class("dropdown-item"), html.Href("/recipes"), gomponents.Text("My recipes"))),
+										html.Li(html.A(html.Class("dropdown-item"), html.Href("/recipes/favorites"), gomponents.Text("Favorites"))),
+										html.Li(html.A(html.Class("dropdown-item"), html.Href("/recipes/explore"), gomponents.Text("Explore"))),
+									),
 								),
 								html.A(
 									html.Class("btn btn-secondary w-100 my-2"),
 									html.Href("/accounts/profiles"),
 									gomponents.Text("Profiles"),
 								),
-								html.A(
-									html.Class("btn btn-secondary w-100 my-2"),
-									html.Href("/recipes"),
-									gomponents.Text("Recipes"),
-								),
-								// html.A(
-								// 	html.Class("btn btn-secondary w-100 my-2"),
-								// 	html.Href("/favorites"),
-								// 	gomponents.Text("Favorites"),
-								// ),
 								html.A(
 									html.Class("btn btn-secondary w-100 my-2"),
 									html.Href("/cart"),

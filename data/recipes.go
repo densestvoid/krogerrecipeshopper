@@ -20,15 +20,22 @@ type Recipe struct {
 	Name        string
 	Description string
 	Visibility  string
+	Favorite    bool
 }
 
-func (m *Repository) GetRecipe(ctx context.Context, id uuid.UUID) (*Recipe, error) {
-	row := m.db.QueryRowContext(ctx, `SELECT id, account_id, name, description, visibility FROM recipes WHERE id = $1`, id)
+func (m *Repository) GetRecipe(ctx context.Context, recipeID uuid.UUID, accountID uuid.UUID) (*Recipe, error) {
+	row := m.db.QueryRowContext(ctx, `
+		SELECT id, recipes.account_id, name, description, visibility, favorites.account_id IS NOT NULL as favorite
+		FROM recipes
+			LEFT JOIN favorites ON favorites.recipe_id = recipes.id AND favorites.account_id = $2
+		WHERE id = $1`,
+		recipeID, accountID,
+	)
 	if err := row.Err(); err != nil {
 		return nil, err
 	}
 	var recipe Recipe
-	return &recipe, row.Scan(&recipe.ID, &recipe.AccountID, &recipe.Name, &recipe.Description, &recipe.Visibility)
+	return &recipe, row.Scan(&recipe.ID, &recipe.AccountID, &recipe.Name, &recipe.Description, &recipe.Visibility, &recipe.Favorite)
 }
 
 type ListRecipesFilter interface {
@@ -40,7 +47,7 @@ type ListRecipesFilterByAccountID struct {
 }
 
 func (f ListRecipesFilterByAccountID) listRecipoesFilter() string {
-	return fmt.Sprintf(`account_id = '%v'`, f.AccountID)
+	return fmt.Sprintf(`recipes.account_id = '%v'`, f.AccountID)
 }
 
 type ListRecipesFilterByName struct {
@@ -51,13 +58,23 @@ func (f ListRecipesFilterByName) listRecipoesFilter() string {
 	return fmt.Sprintf(`name ILIKE '%%%s%%'`, f.Name)
 }
 
+type ListRecipesFilterByFavorites struct{}
+
+func (f ListRecipesFilterByFavorites) listRecipoesFilter() string {
+	return "favorites.account_id IS NOT NULL"
+}
+
 type ListRecipesOrderBy struct {
 	Field     string
 	Direction string
 }
 
 func (m *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filters []ListRecipesFilter, orderBys []ListRecipesOrderBy) ([]Recipe, error) {
-	query := `SELECT id, account_id, name, description, visibility FROM recipes WHERE (account_id = $1 OR visibility = 'public')`
+	query := `
+		SELECT id, recipes.account_id, name, description, visibility, favorites.account_id IS NOT NULL as favorite
+		FROM recipes
+			LEFT JOIN favorites ON favorites.recipe_id = recipes.id AND favorites.account_id = $1
+		WHERE (recipes.account_id = $1 OR visibility = 'public')`
 	if len(filters) > 0 {
 		query += " AND "
 		filterStrings := []string{}
@@ -82,7 +99,7 @@ func (m *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filte
 	var recipes []Recipe
 	for rows.Next() {
 		var recipe Recipe
-		if err := rows.Scan(&recipe.ID, &recipe.AccountID, &recipe.Name, &recipe.Description, &recipe.Visibility); err != nil {
+		if err := rows.Scan(&recipe.ID, &recipe.AccountID, &recipe.Name, &recipe.Description, &recipe.Visibility, &recipe.Favorite); err != nil {
 			return nil, err
 		}
 		recipes = append(recipes, recipe)
@@ -101,6 +118,16 @@ func (m *Repository) CreateRecipe(ctx context.Context, accountID uuid.UUID, name
 
 func (m *Repository) UpdateRecipe(ctx context.Context, recipe Recipe) error {
 	_, err := m.db.ExecContext(ctx, `UPDATE recipes SET name=$1, description=$2, visibility=$3 WHERE id=$4`, recipe.Name, recipe.Description, recipe.Visibility, recipe.ID)
+	return err
+}
+
+func (m *Repository) FavoriteRecipe(ctx context.Context, recipeID, accountID uuid.UUID) error {
+	_, err := m.db.ExecContext(ctx, `INSERT INTO favorites(recipe_id, account_id) VALUES ($1, $2)`, recipeID, accountID)
+	return err
+}
+
+func (m *Repository) UnfavoriteRecipe(ctx context.Context, recipeID, accountID uuid.UUID) error {
+	_, err := m.db.ExecContext(ctx, `DELETE FROM favorites WHERE recipe_id = $1 AND account_id = $2`, recipeID, accountID)
 	return err
 }
 

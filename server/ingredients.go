@@ -27,7 +27,7 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 			}
 
 			recipeID := uuid.MustParse(chi.URLParam(r, "recipeID"))
-			recipe, err := repo.GetRecipe(r.Context(), recipeID)
+			recipe, err := repo.GetRecipe(r.Context(), recipeID, accountID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -87,7 +87,7 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 			}
 
 			recipeID := uuid.MustParse(chi.URLParam(r, "recipeID"))
-			recipe, err := repo.GetRecipe(r.Context(), recipeID)
+			recipe, err := repo.GetRecipe(r.Context(), recipeID, accountID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return

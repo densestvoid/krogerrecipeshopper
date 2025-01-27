@@ -36,8 +36,26 @@ func Recipes(accountID uuid.UUID) gomponents.Node {
 	})
 }
 
+func FavoriteRecipes() gomponents.Node {
+	return BasePage("Favorites", "/", gomponents.Group{
+		html.Div(
+			html.Class("text-center"),
+			html.H3(
+				gomponents.Text("Favorites"),
+			),
+			html.Div(
+				htmx.Post("/recipes/search"),
+				htmx.Swap("innerHTML"),
+				htmx.Vals(`{"favorites": true}`),
+				htmx.Trigger("load,recipe-update from:body"),
+			),
+		),
+		Modal("recipe-details", "View recipe", nil),
+	})
+}
+
 func ExploreRecipes() gomponents.Node {
-	return BasePage("Recipes", "/", gomponents.Group{
+	return BasePage("Explore", "/", gomponents.Group{
 		html.Div(
 			html.Class("text-center"),
 			html.H3(
@@ -197,6 +215,7 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 				),
 			),
 		),
+		FavoriteButton(recipe.ID, recipe.Favorite),
 	}
 	if accountID == recipe.AccountID {
 		actions = append(actions,
@@ -240,6 +259,27 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 					actions,
 				),
 			),
+		),
+	)
+}
+
+func FavoriteButton(recipeID uuid.UUID, favorite bool) gomponents.Node {
+	if favorite {
+		return html.Li(
+			html.Button(
+				html.Role("button"),
+				html.Class("btn btn-secondary w-100"),
+				gomponents.Text("Unfavorite"),
+				htmx.Delete(fmt.Sprintf("/recipes/%v/favorite", recipeID)),
+			),
+		)
+	}
+	return html.Li(
+		html.Button(
+			html.Role("button"),
+			html.Class("btn btn-secondary w-100"),
+			gomponents.Text("Favorite"),
+			htmx.Post(fmt.Sprintf("/recipes/%v/favorite", recipeID)),
 		),
 	)
 }
