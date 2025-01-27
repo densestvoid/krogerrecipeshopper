@@ -13,6 +13,10 @@ import (
 	"github.com/densestvoid/krogerrecipeshopper/templates"
 )
 
+func ProductImageLink(productID, imageSize string) string {
+	return fmt.Sprintf("https://www.kroger.com/product/images/%s/front/%s", imageSize, productID)
+}
+
 func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {

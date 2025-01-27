@@ -11,6 +11,19 @@ func BasePage(title, baseURL string, bodyNodes gomponents.Group) gomponents.Node
 		html.HTML(
 			html.Lang("en"),
 			html.Data("bs-theme", "dark"),
+
+			html.Meta(
+				html.Name("htmx-config"),
+				html.Content(`{
+					"responseHandling":[
+						{"code":"204", "swap": false},
+						{"code":"[23]..", "swap": true},
+						{"code":"[45]..", "swap": true},
+						{"code":"...", "swap": true}
+					]
+				}`),
+			),
+
 			baseHead(title, baseURL),
 			baseBody(bodyNodes),
 		),
