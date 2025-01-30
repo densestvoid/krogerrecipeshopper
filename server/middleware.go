@@ -74,6 +74,7 @@ func NewSlogMiddleware() func(http.Handler) http.Handler {
 				slog.Int("status-code", statusCode),
 				slog.String("method", r.Method),
 				slog.String("url", r.URL.RequestURI()),
+				slog.String("ip", r.RemoteAddr),
 				slog.String("user-agent", r.UserAgent()),
 			)
 
