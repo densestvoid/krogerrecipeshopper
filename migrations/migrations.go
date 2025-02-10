@@ -12,7 +12,9 @@ var migrations embed.FS
 
 func setup() {
 	goose.SetBaseFS(migrations)
-	goose.SetDialect("postgres")
+	if err := goose.SetDialect("postgres"); err != nil {
+		panic(err)
+	}
 	goose.SetVerbose(true)
 }
 

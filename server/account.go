@@ -112,7 +112,10 @@ func NewAccountMux(config Config, repo *data.Repository, cache *data.Cache) func
 					return
 				}
 
-				r.ParseForm()
+				if err := r.ParseForm(); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
 				accountID := uuid.MustParse(chi.URLParam(r, "accountID"))
 
 				if r.Form.Has("imageSize") {
@@ -245,9 +248,13 @@ func NewAccountMux(config Config, repo *data.Repository, cache *data.Cache) func
 						return
 					}
 
-					r.ParseForm()
+					if err := r.ParseForm(); err != nil {
+						http.Error(w, err.Error(), http.StatusBadRequest)
+						return
+					}
 					accountID := uuid.MustParse(chi.URLParam(r, "accountID"))
 					displayName := r.FormValue("displayName")
+
 					if _, err := repo.CreateProfile(r.Context(), accountID, displayName); err != nil {
 						http.Error(w, fmt.Sprintf("creating profile: %v", err), http.StatusInternalServerError)
 						return
@@ -268,9 +275,13 @@ func NewAccountMux(config Config, repo *data.Repository, cache *data.Cache) func
 						return
 					}
 
-					r.ParseForm()
+					if err := r.ParseForm(); err != nil {
+						http.Error(w, err.Error(), http.StatusBadRequest)
+						return
+					}
 					accountID := uuid.MustParse(chi.URLParam(r, "accountID"))
 					displayName := r.FormValue("displayName")
+
 					if err := repo.UpdateProfileDisplayName(r.Context(), accountID, displayName); err != nil {
 						http.Error(w, fmt.Sprintf("updating profile: %v", err), http.StatusInternalServerError)
 						return

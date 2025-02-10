@@ -58,27 +58,25 @@ var serveCmd = &cobra.Command{
 
 		if !viper.GetBool("secure") {
 			srv := http.Server{
-				Addr:    fmt.Sprintf("%s:%d", viper.GetString("host"), viper.GetInt("port")),
-				Handler: handler,
+				Addr:         fmt.Sprintf("%s:%d", viper.GetString("host"), viper.GetInt("port")),
+				Handler:      handler,
+				ReadTimeout:  5 * time.Second,
+				WriteTimeout: 10 * time.Second,
 			}
 			log.Fatal(srv.ListenAndServe())
 		}
 
 		cfg := &tls.Config{
-			MinVersion:               tls.VersionTLS12,
+			MinVersion:               tls.VersionTLS13,
 			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
 			PreferServerCipherSuites: true,
-			CipherSuites: []uint16{
-				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-				tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
-			},
 		}
 
 		srv := http.Server{
 			Addr:         fmt.Sprintf("%s:%d", viper.GetString("host"), viper.GetInt("port")),
 			Handler:      handler,
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 10 * time.Second,
 			TLSConfig:    cfg,
 			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 		}

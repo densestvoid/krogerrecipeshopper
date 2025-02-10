@@ -147,7 +147,9 @@ func (p *HTTPResponseJSONParser) ParseHTTPResponse(resp *http.Response) error {
 	}
 
 	// Reset
-	bytesReader.Seek(0, io.SeekStart)
+	if _, err := bytesReader.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
 
 	// Check for API error
 	var apiErrors apiErrors
@@ -156,7 +158,9 @@ func (p *HTTPResponseJSONParser) ParseHTTPResponse(resp *http.Response) error {
 	}
 
 	// Reset
-	bytesReader.Seek(0, io.SeekStart)
+	if _, err := bytesReader.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
 
 	// Decode the response
 	return decoder.Decode(&p.value)

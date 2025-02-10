@@ -31,7 +31,7 @@ func Cart() gomponents.Node {
 				htmx.Trigger("click"),
 			),
 		),
-		Modal("cart-product-details", "Edit product", htmx.Put(fmt.Sprintf("/cart/product"))),
+		Modal("cart-product-details", "Edit product", htmx.Put("/cart/product")),
 	})
 }
 

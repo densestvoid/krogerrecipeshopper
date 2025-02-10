@@ -36,7 +36,10 @@ func NewProductsMux(config Config, repo *data.Repository, cache *data.Cache) fun
 			}
 			productsClient := kroger.NewProductsClient(http.DefaultClient, kroger.PublicEnvironment, authResp.AccessToken)
 
-			r.ParseForm()
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
 
 			productsResp, err := productsClient.GetProducts(r.Context(), kroger.GetProductsRequest{
 				Filters: kroger.GetProductsByItemAndAvailabilityFilters{

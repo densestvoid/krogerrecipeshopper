@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -53,7 +53,7 @@ func (r *PutAddRequest) WriteHTTPRequest(req *http.Request) error {
 	if err != nil {
 		return err
 	}
-	req.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+	req.Body = io.NopCloser(bytes.NewBuffer(data))
 	return nil
 }
 

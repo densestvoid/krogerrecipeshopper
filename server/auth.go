@@ -51,7 +51,10 @@ func NewAuthMux(config Config, repo *data.Repository) func(r chi.Router) {
 				http.Error(w, fmt.Sprintf("Unable to create session: %v", err), http.StatusInternalServerError)
 				return
 			}
-			SetAuthResponseCookies(r.Context(), w, session, authResp)
+			if err := SetAuthResponseCookies(r.Context(), w, session, authResp); err != nil {
+				http.Error(w, fmt.Sprintf("Unable to set auth cookies: %v", err), http.StatusInternalServerError)
+				return
+			}
 			http.Redirect(w, r, "/", http.StatusFound)
 		})
 
@@ -113,7 +116,10 @@ func AuthenticationMiddleware(config Config, repo *data.Repository) func(next ht
 					http.Error(w, fmt.Sprintf("Unable to create session: %v", err), http.StatusInternalServerError)
 					return
 				}
-				SetAuthResponseCookies(r.Context(), w, session, authResp)
+				if err := SetAuthResponseCookies(r.Context(), w, session, authResp); err != nil {
+					http.Error(w, fmt.Sprintf("Unable to set auth cookies: %v", err), http.StatusInternalServerError)
+					return
+				}
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -192,17 +198,17 @@ func ClearAuthCookies(w http.ResponseWriter) {
 func GetAccountIDFromRequestSessionCookie(repo *data.Repository, r *http.Request) (uuid.UUID, error) {
 	var sessionID uuid.UUID
 	if sessionIDCookie, err := r.Cookie("sessionID"); err != nil {
-		return uuid.Nil, fmt.Errorf("Session ID cookie not found: %w", err)
+		return uuid.Nil, fmt.Errorf("session ID cookie not found: %w", err)
 	} else if err = sessionIDCookie.Valid(); err != nil {
-		return uuid.Nil, fmt.Errorf("Invalid Session ID cookie: %w", err)
+		return uuid.Nil, fmt.Errorf("invalid Session ID cookie: %w", err)
 	} else if sessionIDCookie.Value == "" {
-		return uuid.Nil, fmt.Errorf("Session ID cookie empty")
+		return uuid.Nil, fmt.Errorf("session ID cookie empty")
 	} else if sessionID, err = uuid.Parse(sessionIDCookie.Value); err != nil {
-		return uuid.Nil, fmt.Errorf("Invalid Session ID: %w", err)
+		return uuid.Nil, fmt.Errorf("invalid Session ID: %w", err)
 	}
 	session, err := repo.GetSessionByID(r.Context(), sessionID)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("Unable to get session: %w", err)
+		return uuid.Nil, fmt.Errorf("unable to get session: %w", err)
 	}
 	return session.AccountID, nil
 }

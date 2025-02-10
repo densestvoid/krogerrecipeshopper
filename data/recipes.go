@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -131,12 +132,18 @@ func (m *Repository) UnfavoriteRecipe(ctx context.Context, recipeID, accountID u
 	return err
 }
 
-func (m *Repository) DeleteRecipe(ctx context.Context, id uuid.UUID) error {
+func (m *Repository) DeleteRecipe(ctx context.Context, id uuid.UUID) (retErr error) {
 	tx, err := m.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+
+	defer func() {
+		if deferErr := tx.Rollback(); deferErr != nil {
+			retErr = errors.Join(retErr, deferErr)
+		}
+	}()
+
 	if _, err := tx.ExecContext(ctx, `DELETE FROM ingredients where recipe_id = $1`, id); err != nil {
 		return err
 	}

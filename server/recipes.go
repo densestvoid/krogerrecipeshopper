@@ -47,7 +47,10 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 				return
 			}
 
-			r.ParseForm()
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
 
 			name := r.FormValue("name")
 			if name == "" {
@@ -101,7 +104,11 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 				return
 			}
 
-			r.ParseForm()
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
 			filters := []data.ListRecipesFilter{}
 			if r.Form.Has("accountID") {
 				filters = append(filters, data.ListRecipesFilterByAccountID{AccountID: uuid.MustParse(r.Form.Get("accountID"))})

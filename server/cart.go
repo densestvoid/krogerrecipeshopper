@@ -126,7 +126,10 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 				return
 			}
 
-			r.ParseForm()
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
 
 			productID := r.FormValue("productID")
 			quantityFloat, err := strconv.ParseFloat(r.FormValue("quantity"), 64)

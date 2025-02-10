@@ -15,7 +15,10 @@ const RadiusMiles = 5
 func NewLocationsMux(config Config) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			r.ParseForm()
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
 
 			zipCode, err := strconv.Atoi(r.Form.Get("zipCode"))
 			if err != nil || zipCode <= 0 {

@@ -12,7 +12,7 @@ import (
 
 const (
 	AuthorizationCodeEndpoint = "/v1/connect/oauth2/authorize"
-	AccessTokenEndpoint       = "/v1/connect/oauth2/token"
+	AccessTokenEndpoint       = "/v1/connect/oauth2/token" // #nosec G101
 
 	GrantTypeAuthorizationCode = "authorization_code"
 	GrantTypeClientCredentials = "client_credentials"

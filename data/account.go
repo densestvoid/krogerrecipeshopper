@@ -60,12 +60,17 @@ func (r *Repository) GetAccountByID(ctx context.Context, id uuid.UUID) (Account,
 	return account, row.Scan(&account.ID, &account.KrogerProfileID, &account.ImageSize, &account.LocationID)
 }
 
-func (r *Repository) DeleteAccount(ctx context.Context, id uuid.UUID) error {
+func (r *Repository) DeleteAccount(ctx context.Context, id uuid.UUID) (retErr error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+
+	defer func() {
+		if deferErr := tx.Rollback(); deferErr != nil {
+			retErr = errors.Join(retErr, deferErr)
+		}
+	}()
 
 	// Clear ingredients
 	if _, err := tx.ExecContext(ctx, `DELETE FROM ingredients USING recipes WHERE ingredients.recipe_id = recipes.id AND recipes.account_id = $1`, id); err != nil {
