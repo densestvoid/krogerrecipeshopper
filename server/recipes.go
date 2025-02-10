@@ -11,7 +11,7 @@ import (
 	"github.com/densestvoid/krogerrecipeshopper/templates"
 )
 
-func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
+func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
@@ -224,7 +224,7 @@ func NewRecipesMux(config Config, repo *data.Repository) func(chi.Router) {
 				w.WriteHeader(http.StatusOK)
 			})
 
-			r.Route("/ingredients", NewIngredientMux(config, repo))
+			r.Route("/ingredients", NewIngredientMux(config, repo, cache))
 		})
 	}
 }

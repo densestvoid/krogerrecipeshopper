@@ -22,6 +22,7 @@ go.work
 go.work.sum
 
 # Test DB
+cmd/recipe/redisdata
 cmd/recipe/test-db
 
 # VSCode artifacts

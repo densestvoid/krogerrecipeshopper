@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/densestvoid/krogerrecipeshopper/app"
 	"github.com/densestvoid/krogerrecipeshopper/data"
 	"github.com/densestvoid/krogerrecipeshopper/kroger"
 	"github.com/densestvoid/krogerrecipeshopper/templates"
@@ -17,7 +18,7 @@ func ProductImageLink(productID, imageSize string) string {
 	return fmt.Sprintf("https://www.kroger.com/product/images/%s/front/%s", imageSize, productID)
 }
 
-func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
+func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
@@ -115,13 +116,10 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 					return
 				}
 				productsClient := kroger.NewProductsClient(http.DefaultClient, kroger.PublicEnvironment, authResp.AccessToken)
+				locationsClient := kroger.NewLocationsClient(http.DefaultClient, kroger.PublicEnvironment, authResp.AccessToken)
 
-				productsResp, err := productsClient.GetProducts(r.Context(), kroger.GetProductsRequest{
-					Filters: &kroger.GetProductsByIDsFilter{
-						ProductIDs: productIDs,
-					},
-					LocationID: nil,
-				})
+				krogerManager := app.NewKrogerManager(productsClient, locationsClient, cache)
+				productsByID, err := krogerManager.GetProducts(r.Context(), productIDs...)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -134,40 +132,19 @@ func NewIngredientMux(config Config, repo *data.Repository) func(chi.Router) {
 				}
 
 				for _, ingredient := range ingredients {
-					for _, product := range productsResp.Products {
-						if ingredient.ProductID == product.ProductID {
-							var imageURL string
-						IMAGELOOP:
-							for _, image := range product.Images {
-								if image.Featured {
-									for _, size := range image.Sizes {
-										if size.Size == account.ImageSize {
-											imageURL = size.URL
-											break IMAGELOOP
-										}
-									}
-								}
-							}
-							var size string
-							for _, item := range product.Items {
-								size = item.Size
-								break
-							}
-							ingredientProducts = append(ingredientProducts, templates.Ingredient{
-								Product: templates.Product{
-									ProductID:   product.ProductID,
-									Brand:       product.Brand,
-									Description: product.Description,
-									Size:        size,
-									ImageURL:    imageURL,
-								},
-								RecipeID: ingredient.RecipeID,
-								Quantity: ingredient.Quantity,
-								Staple:   ingredient.Staple,
-							})
-							break
-						}
-					}
+					product := productsByID[ingredient.ProductID]
+					ingredientProducts = append(ingredientProducts, templates.Ingredient{
+						Product: templates.Product{
+							ProductID:   product.ProductID,
+							Brand:       product.Brand,
+							Description: product.Description,
+							Size:        product.Size,
+							ImageURL:    ProductImageLink(ingredient.ProductID, account.ImageSize),
+						},
+						RecipeID: ingredient.RecipeID,
+						Quantity: ingredient.Quantity,
+						Staple:   ingredient.Staple,
+					})
 				}
 			}
 

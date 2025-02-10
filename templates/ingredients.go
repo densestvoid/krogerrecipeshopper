@@ -103,7 +103,7 @@ func ProductsSearch() gomponents.Node {
 					html.Placeholder("Begin typing to seach products"),
 					htmx.Post("/products/search"),
 					htmx.Swap("innerHTML"),
-					htmx.Trigger("input changed delay:500ms, keyup[key=='Enter']"),
+					htmx.Trigger("input changed delay:1s, keyup[key=='Enter']"),
 					htmx.Target("#products-search-table"),
 					htmx.Indicator(".htmx-indicator"),
 				),

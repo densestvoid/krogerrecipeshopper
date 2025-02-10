@@ -138,7 +138,7 @@ func (c *LocationsClient) GetLocations(ctx context.Context, request GetLocations
 }
 
 type GetLocationRequest struct {
-	LocationID int
+	LocationID string
 }
 
 type GetLocationResponse struct {
@@ -146,13 +146,13 @@ type GetLocationResponse struct {
 	Location Location `json:"data"`
 }
 
-func (c *LocationsClient) GetLocation(ctx context.Context, request GetLocationRequest) (*GetProductResponse, error) {
-	path, err := url.JoinPath(ProductsEndpoint, strconv.FormatInt(int64(request.LocationID), 10))
+func (c *LocationsClient) GetLocation(ctx context.Context, request GetLocationRequest) (*GetLocationResponse, error) {
+	path, err := url.JoinPath(LocationsEndpoint, request.LocationID)
 	if err != nil {
 		return nil, err
 	}
 
-	var response GetProductResponse
+	var response GetLocationResponse
 	if err := c.client.Do(
 		ctx,
 		http.MethodGet,
@@ -193,6 +193,9 @@ type Department struct {
 	Name         string
 	Phone        string
 	Hours        WeeklyHours `json:"hours"`
+	Address      Address     `json:"address"`
+	Geolocation  Geolocation `json:"geolocation"`
+	Offsite      bool        `json:"offsite"`
 }
 
 type WeeklyHours struct {
@@ -215,6 +218,7 @@ type DailyHours struct {
 }
 
 type Geolocation struct {
-	Latitude  float32 `json:"latitude"`
-	Longitude float32 `json:"longitude"`
+	LatitudeLongitude string  `json:"latLng"`
+	Latitude          float64 `json:"latitude"`
+	Longitude         float64 `json:"longitude"`
 }

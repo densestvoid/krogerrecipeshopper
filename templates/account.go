@@ -4,12 +4,19 @@ import (
 	"fmt"
 
 	"github.com/densestvoid/krogerrecipeshopper/data"
+	"github.com/google/uuid"
 	"maragu.dev/gomponents"
 	htmx "maragu.dev/gomponents-htmx"
 	"maragu.dev/gomponents/html"
 )
 
-func Account(account data.Account, profile *data.Profile) gomponents.Node {
+type Account struct {
+	ID        uuid.UUID
+	ImageSize string
+	Location  *data.CacheLocation
+}
+
+func AccountPage(account Account, profile *data.Profile) gomponents.Node {
 	return BasePage("Account", "/", gomponents.Group{
 		html.Div(
 			html.Class("d-flex justify-content-center"),
@@ -38,7 +45,7 @@ func Account(account data.Account, profile *data.Profile) gomponents.Node {
 	})
 }
 
-func Profile(account data.Account, profile *data.Profile) gomponents.Node {
+func Profile(account Account, profile *data.Profile) gomponents.Node {
 	if profile == nil {
 		return html.Div(
 			html.Class("card m-1"),
@@ -121,18 +128,54 @@ Your recipes will still be searchable on the explore page.`),
 	)
 }
 
-func Settings(account data.Account) gomponents.Node {
+func Settings(account Account) gomponents.Node {
 	return html.Div(
 		html.Class("card m-1"),
-		html.Form(
-			htmx.Patch(fmt.Sprintf("/accounts/%s/settings", account.ID)),
-			htmx.Swap("none"),
-			html.Div(
-				html.Class("card-header"),
-				gomponents.Text("Update settings"),
+		html.Div(
+			html.Class("card-header"),
+			gomponents.Text("Update settings"),
+		),
+		html.Div(
+			html.Class("card-body"),
+			Modal(
+				"location-select",
+				"Select location",
+				gomponents.Group{
+					htmx.Patch(fmt.Sprintf("/accounts/%s/settings", account.ID)),
+					htmx.Swap("innerHTML"),
+					htmx.Target("#location-info"),
+				},
 			),
 			html.Div(
-				html.Class("card-body"),
+				html.Class("row"),
+				html.Div(
+					html.Class("col-3 align-content-center text-nowrap"),
+					html.P(gomponents.Text("Location:")),
+				),
+				html.Div(
+					html.ID("location-info"),
+					html.Class("col-9 text-nowrap"),
+					LocationNode(account.Location),
+				),
+			),
+			ModalButton(
+				"location-select-modal",
+				"Change location",
+				"d-inline",
+				"/locations/details",
+				"#location-select-form",
+			),
+			html.Button(
+				html.Class("btn btn-danger"),
+				gomponents.Text("Clear"),
+				htmx.Patch(fmt.Sprintf("/accounts/%s/settings", account.ID)),
+				htmx.Target("#location-info"),
+				htmx.Vals(`{"locationID": ""}`),
+			),
+			html.Form(
+				html.ID("settings-form"),
+				htmx.Patch(fmt.Sprintf("/accounts/%s/settings", account.ID)),
+				htmx.Swap("none"),
 				Select("accountImageSize", "Image size", "imageSize", account.ImageSize, []string{
 					data.ImageSizeThumbnail,
 					data.ImageSizeSmall,
@@ -141,16 +184,27 @@ func Settings(account data.Account) gomponents.Node {
 					data.ImageSizeExtraLarge,
 				}),
 			),
-			html.Div(
-				html.Class("card-footer"),
-				html.Button(
-					html.Type("submit"),
-					html.Class("btn btn-primary"),
-					gomponents.Text("Save settings"),
-				),
+		),
+		html.Div(
+			html.Class("card-footer"),
+			html.Button(
+				html.Type("submit"),
+				html.Class("btn btn-primary"),
+				gomponents.Text("Save settings"),
+				html.FormAttr("settings-form"),
 			),
 		),
 	)
+}
+
+func LocationNode(location *data.CacheLocation) gomponents.Node {
+	if location == nil {
+		return html.P(gomponents.Text("None"))
+	}
+	return gomponents.Group{
+		html.P(gomponents.Text(location.Name)),
+		html.P(gomponents.Text(location.Address)),
+	}
 }
 
 func Select[T comparable](id, label, name string, selected T, values []T) gomponents.Node {

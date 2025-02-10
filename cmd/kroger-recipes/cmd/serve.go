@@ -11,8 +11,10 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/redis/go-redis/v9"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -39,11 +41,20 @@ var serveCmd = &cobra.Command{
 		}
 		repo := data.NewRepository(db)
 
+		client := redis.NewClient(&redis.Options{
+			Addr:     fmt.Sprintf("%s:%d", viper.GetString("cache-host"), viper.GetInt("cache-port")),
+			Password: viper.GetString("cache-password"),
+		})
+		if err := client.Ping(context.Background()).Err(); err != nil {
+			panic(err)
+		}
+		cache := data.NewCache(client, viper.GetDuration("cache-expiration"))
+
 		handler := server.New(context.Background(), slog.Default(), server.Config{
 			ClientID:     viper.GetString("client-id"),
 			ClientSecret: viper.GetString("client-secret"),
 			Domain:       viper.GetString("domain"),
-		}, repo)
+		}, repo, cache)
 
 		if !viper.GetBool("secure") {
 			srv := http.Server{
@@ -85,6 +96,12 @@ func init() {
 	serveCmd.Flags().String("tls-cert", "", "server certificate")
 	serveCmd.Flags().String("tls-key", "", "server key")
 	serveCmd.MarkFlagsRequiredTogether("secure", "tls-cert", "tls-key")
+
+	// Cache details
+	serveCmd.Flags().String("cache-host", "localhost", "cache host")
+	serveCmd.Flags().Int("cache-port", 6379, "cache port")
+	serveCmd.Flags().String("cache-password", "", "cache password")
+	serveCmd.Flags().Duration("cache-expiration", time.Hour*24, "cache expiration")
 
 	// Kroger application details
 	serveCmd.Flags().String("client-id", "", "Kroger application id")

@@ -19,7 +19,7 @@ type Config struct {
 	Domain       string
 }
 
-func New(ctx context.Context, logger *slog.Logger, config Config, repo *data.Repository) http.Handler {
+func New(ctx context.Context, logger *slog.Logger, config Config, repo *data.Repository, cache *data.Cache) http.Handler {
 	mux := chi.NewRouter()
 	mux.Use(
 		httprate.LimitByIP(100, time.Minute),
@@ -37,11 +37,12 @@ func New(ctx context.Context, logger *slog.Logger, config Config, repo *data.Rep
 			}
 			w.WriteHeader(http.StatusOK)
 		})
-		r.Route("/accounts", NewAccountMux(repo))
+		r.Route("/accounts", NewAccountMux(config, repo, cache))
 		r.Route("/profiles", NewProfilesMux(repo))
-		r.Route("/recipes", NewRecipesMux(config, repo))
-		r.Route("/products", NewProductsMux(config, repo))
-		r.Route("/cart", NewCartMux(repo, config))
+		r.Route("/recipes", NewRecipesMux(config, repo, cache))
+		r.Route("/products", NewProductsMux(config, repo, cache))
+		r.Route("/locations", NewLocationsMux(config))
+		r.Route("/cart", NewCartMux(config, repo, cache))
 	})
 
 	return mux

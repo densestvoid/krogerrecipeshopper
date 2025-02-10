@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/densestvoid/krogerrecipeshopper/app"
 	"github.com/densestvoid/krogerrecipeshopper/data"
 	"github.com/densestvoid/krogerrecipeshopper/kroger"
 	"github.com/densestvoid/krogerrecipeshopper/templates"
@@ -19,7 +20,7 @@ func NewT[T any](t T) *T {
 
 const KrogerCartURL = "https://www.kroger.com/shopping/cart"
 
-func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
+func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			if err := templates.Cart().Render(w); err != nil {
@@ -59,13 +60,10 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 					return
 				}
 				productsClient := kroger.NewProductsClient(http.DefaultClient, kroger.PublicEnvironment, authResp.AccessToken)
+				locationsClient := kroger.NewLocationsClient(http.DefaultClient, kroger.PublicEnvironment, authResp.AccessToken)
 
-				productsResp, err := productsClient.GetProducts(r.Context(), kroger.GetProductsRequest{
-					Filters: &kroger.GetProductsByIDsFilter{
-						ProductIDs: productIDs,
-					},
-					LocationID: nil,
-				})
+				krogerManager := app.NewKrogerManager(productsClient, locationsClient, cache)
+				productsByID, err := krogerManager.GetProducts(r.Context(), productIDs...)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -77,38 +75,17 @@ func NewCartMux(repo *data.Repository, config Config) func(chi.Router) {
 					return
 				}
 
-				for _, cartProduct := range dataCartProducts {
-					for _, product := range productsResp.Products {
-						if cartProduct.ProductID == product.ProductID {
-							var imageURL string
-						IMAGELOOP:
-							for _, image := range product.Images {
-								if image.Featured {
-									for _, size := range image.Sizes {
-										if size.Size == account.ImageSize {
-											imageURL = size.URL
-											break IMAGELOOP
-										}
-									}
-								}
-							}
-							var size string
-							for _, item := range product.Items {
-								size = item.Size
-								break
-							}
-							cartProducts = append(cartProducts, templates.CartProduct{
-								ProductID:   product.ProductID,
-								Brand:       product.Brand,
-								Description: product.Description,
-								Size:        size,
-								ImageURL:    imageURL,
-								Quantity:    cartProduct.Quantity,
-								Staple:      cartProduct.Staple,
-							})
-							break
-						}
-					}
+				for _, dataCartProduct := range dataCartProducts {
+					product := productsByID[dataCartProduct.ProductID]
+					cartProducts = append(cartProducts, templates.CartProduct{
+						ProductID:   product.ProductID,
+						Brand:       product.Brand,
+						Description: product.Description,
+						Size:        product.Size,
+						ImageURL:    ProductImageLink(dataCartProduct.ProductID, account.ImageSize),
+						Quantity:    dataCartProduct.Quantity,
+						Staple:      dataCartProduct.Staple,
+					})
 				}
 			}
 

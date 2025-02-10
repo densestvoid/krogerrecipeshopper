@@ -140,6 +140,7 @@ func SetAuthResponseCookies(ctx context.Context, w http.ResponseWriter, session 
 		Path:     "/",
 		Name:     "refreshToken",
 		Value:    credentials.RefreshToken,
+		MaxAge:   int((time.Hour * 24 * 14) / time.Second), // Two weeks of seconds
 		Secure:   true,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
@@ -148,6 +149,7 @@ func SetAuthResponseCookies(ctx context.Context, w http.ResponseWriter, session 
 		Path:     "/",
 		Name:     "sessionID",
 		Value:    session.ID.String(),
+		MaxAge:   credentials.ExpiresIn,
 		Secure:   true,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
