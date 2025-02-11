@@ -52,11 +52,11 @@ jobs:
 
     - name: Add SSH Key
       run: |
-        env
         mkdir -p ~/.ssh
         echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh-add 
+        eval `ssh-agent -s`
+        ssh-add
         ssh-keyscan -p 22 ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
     - name: Deploy
