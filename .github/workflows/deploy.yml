@@ -60,4 +60,9 @@ jobs:
         ssh-keyscan -p 22 ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
     - name: Deploy
+      env:
+        SSHKEY: ~/.ssh/id_rsa
+        HOST: ${{ secrets.SSH_HOST }}
+        USERNAME: ${{ secrets.SSH_USER }}
+        BINPATH: ${{ secrets.SSH_BINPATH }}
       run: task deploy
