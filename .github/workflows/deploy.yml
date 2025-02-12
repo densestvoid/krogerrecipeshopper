@@ -46,6 +46,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: binary
+        path: cmd/kroger-recipes/kroger-recipes
 
     - name: Install tools
       run: go install github.com/go-task/task/v3/cmd/task@latest
