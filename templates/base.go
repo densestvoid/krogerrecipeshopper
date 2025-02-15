@@ -85,6 +85,12 @@ func baseBody(bodyNodes gomponents.Node) gomponents.Node {
 			html.CrossOrigin("anonymous"),
 		),
 
+		// Alpine JS
+		html.Script(
+			html.Src("https://unpkg.com/alpinejs"),
+			html.Defer(),
+		),
+
 		// HTMX
 		html.Script(html.Src("https://unpkg.com/htmx.org@2.0.4")),
 		html.Script(html.Src("https://unpkg.com/htmx-ext-remove-me@2.0.0/remove-me.js")), // Auto remove elements (alerts)

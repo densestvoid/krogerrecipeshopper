@@ -61,6 +61,7 @@ func Profile(account Account, profile *data.Profile) gomponents.Node {
 					FormInput(
 						"profile-display-name",
 						"Display name",
+						nil,
 						html.Input(
 							html.ID("profile-display-name"),
 							html.Class("form-control"),
@@ -96,6 +97,7 @@ func Profile(account Account, profile *data.Profile) gomponents.Node {
 				FormInput(
 					"profile-display-name",
 					"Display name",
+					nil,
 					html.Input(
 						html.ID("profile-display-name"),
 						html.Class("form-control"),
@@ -182,7 +184,7 @@ func Settings(account Account) gomponents.Node {
 					data.ImageSizeMedium,
 					data.ImageSizeLarge,
 					data.ImageSizeExtraLarge,
-				}),
+				}, nil),
 			),
 		),
 		html.Div(
@@ -207,7 +209,7 @@ func LocationNode(location *data.CacheLocation) gomponents.Node {
 	}
 }
 
-func Select[T comparable](id, label, name string, selected T, values []T) gomponents.Node {
+func Select[T comparable](id, label, name string, selected T, values []T, action gomponents.Node) gomponents.Node {
 	var options gomponents.Group
 	for _, value := range values {
 		options = append(options, html.Option(
@@ -220,6 +222,7 @@ func Select[T comparable](id, label, name string, selected T, values []T) gompon
 		html.Select(
 			html.ID(id),
 			html.Class("form-select"),
+			action,
 			html.Name(name),
 			options,
 		),

@@ -59,8 +59,16 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 			}
 
 			description := r.FormValue("description")
-			if description == "" {
-				http.Error(w, fmt.Sprintf("description missing: %v", err), http.StatusBadRequest)
+
+			instructionType := r.FormValue("instruction-type")
+			if instructionType == "" {
+				http.Error(w, fmt.Sprintf("instruction type missing: %v", err), http.StatusBadRequest)
+				return
+			}
+
+			instructions := r.FormValue("instructions")
+			if instructionType != data.InstructionTypeNone && instructions == "" {
+				http.Error(w, fmt.Sprintf("instructions missing: %v", err), http.StatusBadRequest)
 				return
 			}
 
@@ -78,17 +86,19 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 				}
 
 				if err := repo.UpdateRecipe(r.Context(), data.Recipe{
-					ID:          id,
-					AccountID:   accountID,
-					Name:        name,
-					Description: description,
-					Visibility:  visibility,
+					ID:              id,
+					AccountID:       accountID,
+					Name:            name,
+					Description:     description,
+					InstructionType: instructionType,
+					Instructions:    instructions,
+					Visibility:      visibility,
 				}); err != nil {
 					http.Error(w, fmt.Sprintf("updating recipe: %v", err), http.StatusInternalServerError)
 					return
 				}
 			} else {
-				_, err := repo.CreateRecipe(r.Context(), accountID, name, description, visibility)
+				_, err := repo.CreateRecipe(r.Context(), accountID, name, description, instructionType, instructions, visibility)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("creating recipe: %v", err), http.StatusInternalServerError)
 					return

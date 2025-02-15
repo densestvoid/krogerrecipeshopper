@@ -67,6 +67,9 @@ func (r *Repository) DeleteAccount(ctx context.Context, id uuid.UUID) (retErr er
 	}
 
 	defer func() {
+		if retErr == nil {
+			return
+		}
 		if deferErr := tx.Rollback(); deferErr != nil {
 			retErr = errors.Join(retErr, deferErr)
 		}

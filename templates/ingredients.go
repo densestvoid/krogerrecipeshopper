@@ -43,7 +43,7 @@ func IngredientDetailsForm(ingredient *data.Ingredient) gomponents.Node {
 				html.Name("productID"),
 				html.Value(ingredient.ProductID),
 			),
-			FormInput("ingredient-quantity", "ingredient-quantity", html.Input(
+			FormInput("ingredient-quantity", "ingredient-quantity", nil, html.Input(
 				html.ID("ingredient-quantity"),
 				html.Class("form-control"),
 				html.Type("number"),
@@ -65,7 +65,7 @@ func IngredientDetailsForm(ingredient *data.Ingredient) gomponents.Node {
 	}
 	return gomponents.Group{
 		ProductsSearch(),
-		FormInput("ingredient-quantity", "Ingredient quantity", html.Input(
+		FormInput("ingredient-quantity", "Ingredient quantity", nil, html.Input(
 			html.ID("ingredient-quantity"),
 			html.Class("form-control"),
 			html.Type("number"),
