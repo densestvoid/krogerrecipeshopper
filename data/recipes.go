@@ -15,18 +15,34 @@ const (
 	VisibilityPublic  = "public"
 )
 
+const (
+	InstructionTypeNone = "none"
+	InstructionTypeText = "text"
+	InstructionTypeLink = "link"
+)
+
 type Recipe struct {
-	ID          uuid.UUID
-	AccountID   uuid.UUID
-	Name        string
-	Description string
-	Visibility  string
-	Favorite    bool
+	ID              uuid.UUID
+	AccountID       uuid.UUID
+	Name            string
+	Description     string
+	InstructionType string
+	Instructions    string
+	Visibility      string
+	Favorite        bool
 }
 
 func (m *Repository) GetRecipe(ctx context.Context, recipeID uuid.UUID, accountID uuid.UUID) (*Recipe, error) {
 	row := m.db.QueryRowContext(ctx, `
-		SELECT id, recipes.account_id, name, description, visibility, favorites.account_id IS NOT NULL as favorite
+		SELECT
+			id,
+			recipes.account_id,
+			name,
+			description, 
+			instruction_type,
+			instructions,
+			visibility,
+			favorites.account_id IS NOT NULL as favorite
 		FROM recipes
 			LEFT JOIN favorites ON favorites.recipe_id = recipes.id AND favorites.account_id = $2
 		WHERE id = $1`,
@@ -36,7 +52,16 @@ func (m *Repository) GetRecipe(ctx context.Context, recipeID uuid.UUID, accountI
 		return nil, err
 	}
 	var recipe Recipe
-	return &recipe, row.Scan(&recipe.ID, &recipe.AccountID, &recipe.Name, &recipe.Description, &recipe.Visibility, &recipe.Favorite)
+	return &recipe, row.Scan(
+		&recipe.ID,
+		&recipe.AccountID,
+		&recipe.Name,
+		&recipe.Description,
+		&recipe.InstructionType,
+		&recipe.Instructions,
+		&recipe.Visibility,
+		&recipe.Favorite,
+	)
 }
 
 type ListRecipesFilter interface {
@@ -72,7 +97,15 @@ type ListRecipesOrderBy struct {
 
 func (m *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filters []ListRecipesFilter, orderBys []ListRecipesOrderBy) ([]Recipe, error) {
 	query := `
-		SELECT id, recipes.account_id, name, description, visibility, favorites.account_id IS NOT NULL as favorite
+		SELECT
+			id,
+			recipes.account_id,
+			name,
+			description, 
+			instruction_type,
+			instructions,
+			visibility,
+			favorites.account_id IS NOT NULL as favorite
 		FROM recipes
 			LEFT JOIN favorites ON favorites.recipe_id = recipes.id AND favorites.account_id = $1
 		WHERE (recipes.account_id = $1 OR visibility = 'public')`
@@ -100,7 +133,16 @@ func (m *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filte
 	var recipes []Recipe
 	for rows.Next() {
 		var recipe Recipe
-		if err := rows.Scan(&recipe.ID, &recipe.AccountID, &recipe.Name, &recipe.Description, &recipe.Visibility, &recipe.Favorite); err != nil {
+		if err := rows.Scan(
+			&recipe.ID,
+			&recipe.AccountID,
+			&recipe.Name,
+			&recipe.Description,
+			&recipe.InstructionType,
+			&recipe.Instructions,
+			&recipe.Visibility,
+			&recipe.Favorite,
+		); err != nil {
 			return nil, err
 		}
 		recipes = append(recipes, recipe)
@@ -108,8 +150,8 @@ func (m *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filte
 	return recipes, nil
 }
 
-func (m *Repository) CreateRecipe(ctx context.Context, accountID uuid.UUID, name, description, visibility string) (uuid.UUID, error) {
-	row := m.db.QueryRowContext(ctx, `INSERT INTO recipes(account_id, name, description, visibility) VALUES ($1, $2, $3, $4) RETURNING id`, accountID, name, description, visibility)
+func (m *Repository) CreateRecipe(ctx context.Context, accountID uuid.UUID, name, description, instructionType, instructions, visibility string) (uuid.UUID, error) {
+	row := m.db.QueryRowContext(ctx, `INSERT INTO recipes(account_id, name, description, instruction_type, instructions, visibility) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`, accountID, name, description, instructionType, instructions, visibility)
 	if err := row.Err(); err != nil {
 		return uuid.Nil, err
 	}
@@ -118,7 +160,7 @@ func (m *Repository) CreateRecipe(ctx context.Context, accountID uuid.UUID, name
 }
 
 func (m *Repository) UpdateRecipe(ctx context.Context, recipe Recipe) error {
-	_, err := m.db.ExecContext(ctx, `UPDATE recipes SET name=$1, description=$2, visibility=$3 WHERE id=$4`, recipe.Name, recipe.Description, recipe.Visibility, recipe.ID)
+	_, err := m.db.ExecContext(ctx, `UPDATE recipes SET name=$1, description=$2, instruction_type=$3, instructions=$4, visibility=$5 WHERE id=$6`, recipe.Name, recipe.Description, recipe.InstructionType, recipe.Instructions, recipe.Visibility, recipe.ID)
 	return err
 }
 
@@ -139,6 +181,9 @@ func (m *Repository) DeleteRecipe(ctx context.Context, id uuid.UUID) (retErr err
 	}
 
 	defer func() {
+		if retErr == nil {
+			return
+		}
 		if deferErr := tx.Rollback(); deferErr != nil {
 			retErr = errors.Join(retErr, deferErr)
 		}

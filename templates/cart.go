@@ -42,7 +42,7 @@ func CartProductDetailsForm(cartProduct data.CartProduct) gomponents.Node {
 			html.Name("productID"),
 			html.Value(cartProduct.ProductID),
 		),
-		FormInput("product-quantity", "product-quantity", html.Input(
+		FormInput("product-quantity", "product-quantity", nil, html.Input(
 			html.ID("product-quantity"),
 			html.Class("form-control"),
 			html.Type("number"),

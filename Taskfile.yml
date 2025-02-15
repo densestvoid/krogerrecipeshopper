@@ -24,7 +24,7 @@ tasks:
   
   migration:
     cmds:
-      - goose --dir migrations -s create {{.CLI_ARGS}} sql
+      - go tool goose --dir migrations -s create {{.CLI_ARGS}} sql
 
   ci:
    cmds:
