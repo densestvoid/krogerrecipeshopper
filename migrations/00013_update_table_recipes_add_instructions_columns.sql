@@ -7,7 +7,7 @@ CREATE TYPE instruction_type AS ENUM (
 );
 
 ALTER TABLE recipes
-    ADD COLUMN instruction_type instruction_type NOT NULL DEFAULT 'text',
+    ADD COLUMN instruction_type instruction_type NOT NULL DEFAULT 'none',
     ADD COLUMN instructions TEXT NOT NULL  DEFAULT '';
 -- +goose StatementEnd
 
