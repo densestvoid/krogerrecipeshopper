@@ -50,19 +50,24 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 			}
 
 			productID := r.FormValue("productID")
-			quantityFloat, err := strconv.ParseFloat(r.FormValue("quantity"), 64)
-			if err != nil || quantityFloat <= 0 {
-				http.Error(w, fmt.Sprintf("invalid quantity: %v", err), http.StatusBadRequest)
-				return
-			}
-			quantityPercent := int(quantityFloat * 100)
 
 			staple := false
 			if r.Form.Has("staple") {
+				var err error
 				if staple, err = strconv.ParseBool(r.FormValue("staple")); err != nil {
 					http.Error(w, fmt.Sprintf("invalid staple value: %v", err), http.StatusBadRequest)
 					return
 				}
+			}
+
+			quantityPercent := 100
+			if !staple {
+				quantityFloat, err := strconv.ParseFloat(r.FormValue("quantity"), 64)
+				if err != nil || quantityFloat <= 0 {
+					http.Error(w, fmt.Sprintf("invalid quantity: %v", err), http.StatusBadRequest)
+					return
+				}
+				quantityPercent = int(quantityFloat * 100)
 			}
 
 			if _, err := repo.GetIngredient(r.Context(), recipeID, productID); err != nil {
