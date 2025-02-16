@@ -31,13 +31,13 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 		})
 
 		r.Get("/table", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+			authCookies, err := GetAuthCookies(r)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
 
-			dataCartProducts, err := repo.ListCartProducts(r.Context(), accountID)
+			dataCartProducts, err := repo.ListCartProducts(r.Context(), authCookies.AccountID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -69,7 +69,7 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 					return
 				}
 
-				account, err := repo.GetAccountByID(r.Context(), accountID)
+				account, err := repo.GetAccountByID(r.Context(), authCookies.AccountID)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -97,9 +97,9 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 		})
 
 		r.Post("/recipe/{recipeID}", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+			authCookies, err := GetAuthCookies(r)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
 
@@ -110,7 +110,7 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 				return
 			}
 			for _, ingredient := range ingredients {
-				if err := repo.AddCartProduct(r.Context(), accountID, ingredient.ProductID, ingredient.Quantity, ingredient.Staple); err != nil {
+				if err := repo.AddCartProduct(r.Context(), authCookies.AccountID, ingredient.ProductID, ingredient.Quantity, ingredient.Staple); err != nil {
 					http.Error(w, fmt.Sprintf("adding cart product: %v", err), http.StatusInternalServerError)
 					return
 				}
@@ -120,9 +120,9 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 
 		// Set product quantity in users cart
 		r.Put("/product", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+			authCookies, err := GetAuthCookies(r)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
 
@@ -139,7 +139,7 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 			}
 			quantityPercent := int(quantityFloat * 100)
 
-			if err := repo.SetCartProduct(r.Context(), accountID, productID, &quantityPercent, nil); err != nil {
+			if err := repo.SetCartProduct(r.Context(), authCookies.AccountID, productID, &quantityPercent, nil); err != nil {
 				http.Error(w, fmt.Sprintf("updating cart product: %v", err), http.StatusInternalServerError)
 				return
 			}
@@ -151,14 +151,14 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 		r.Route("/{productID}", func(r chi.Router) {
 			// Get cart product details
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+				authCookies, err := GetAuthCookies(r)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusUnauthorized)
 					return
 				}
 				productID := chi.URLParam(r, "productID")
 
-				cartProduct, err := repo.GetCartProduct(r.Context(), accountID, productID)
+				cartProduct, err := repo.GetCartProduct(r.Context(), authCookies.AccountID, productID)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -173,14 +173,14 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 
 			// Remove product from users cart
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-				accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+				authCookies, err := GetAuthCookies(r)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+					http.Error(w, err.Error(), http.StatusUnauthorized)
 					return
 				}
 				productID := chi.URLParam(r, "productID")
 
-				if err := repo.RemoveCartProduct(r.Context(), accountID, productID); err != nil {
+				if err := repo.RemoveCartProduct(r.Context(), authCookies.AccountID, productID); err != nil {
 					http.Error(w, fmt.Sprintf("removing cart product: %v", err), http.StatusInternalServerError)
 					return
 				}
@@ -191,14 +191,14 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 
 			// Update product to be included in the products sent to the kroger cart
 			r.Post("/include", func(w http.ResponseWriter, r *http.Request) {
-				accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+				authCookies, err := GetAuthCookies(r)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+					http.Error(w, err.Error(), http.StatusUnauthorized)
 					return
 				}
 				productID := chi.URLParam(r, "productID")
 
-				if err := repo.SetCartProduct(r.Context(), accountID, productID, nil, NewT(false)); err != nil {
+				if err := repo.SetCartProduct(r.Context(), authCookies.AccountID, productID, nil, NewT(false)); err != nil {
 					http.Error(w, fmt.Sprintf("updating cart product: %v", err), http.StatusInternalServerError)
 					return
 				}
@@ -209,20 +209,14 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 		})
 
 		r.Post("/checkout", func(w http.ResponseWriter, r *http.Request) {
-			accessTokenCookie, err := r.Cookie("accessToken")
+			authCookies, err := GetAuthCookies(r)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("getting access token: %v", err), http.StatusUnauthorized)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
-			cartClient := kroger.NewCartClient(http.DefaultClient, kroger.PublicEnvironment, accessTokenCookie.Value)
+			cartClient := kroger.NewCartClient(http.DefaultClient, kroger.PublicEnvironment, authCookies.AccessToken)
 
-			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
-			if err != nil {
-				http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
-				return
-			}
-
-			cartProducts, err := repo.ListCartProducts(r.Context(), accountID, &data.ListCartProductsNonStaples{})
+			cartProducts, err := repo.ListCartProducts(r.Context(), authCookies.AccountID, &data.ListCartProductsNonStaples{})
 			if err != nil {
 				http.Error(w, fmt.Sprintf("listing cart products: %v", err), http.StatusInternalServerError)
 				return
@@ -244,7 +238,7 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 				return
 			}
 
-			if err := repo.ClearCartProducts(r.Context(), accountID); err != nil {
+			if err := repo.ClearCartProducts(r.Context(), authCookies.AccountID); err != nil {
 				http.Error(w, fmt.Sprintf("removing cart products: %v", err), http.StatusInternalServerError)
 				return
 			}

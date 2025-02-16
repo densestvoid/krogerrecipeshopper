@@ -31,3 +31,6 @@ cmd/recipe/test-db
 
 # Build artifacts
 cmd/kroger-recipes/kroger-recipes
+
+# Debugging
+**__debug_*
