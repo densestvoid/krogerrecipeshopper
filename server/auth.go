@@ -78,56 +78,133 @@ func LoginRedirectURL(config Config, scopes ...string) string {
 	)
 }
 
+type ContextAuthCookies struct{}
+
+type AuthCookies struct {
+	AccessToken  string
+	RefreshToken string
+	SessionID    uuid.UUID
+	AccountID    uuid.UUID
+}
+
+func RedirectToLogin(w http.ResponseWriter, r *http.Request, url string, err error) {
+	slog.Error("failed to authenticate response", "error", err)
+	if r.Header.Get("HX-Request") != "" {
+		w.Header().Add("HX-Redirect", url)
+	} else {
+		http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+	}
+}
+
 func AuthenticationMiddleware(config Config, repo *data.Repository) func(next http.Handler) http.Handler {
 	loginRedirectURL := LoginRedirectURL(config, kroger.ScopeCartBasicWrite, kroger.ScopeProfileCompact)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if token, err := r.Cookie("accessToken"); err == nil && token.Value != "" && token.Valid() == nil {
-				next.ServeHTTP(w, r)
+			refreshToken := ""
+			refreshTokenCookie, err := r.Cookie("refreshToken")
+			if err != nil || refreshTokenCookie.Value == "" || refreshTokenCookie.Valid() != nil {
+				RedirectToLogin(w, r, loginRedirectURL, errors.New("refreshToken missing"))
 				return
-			} else if token, err := r.Cookie("refreshToken"); err == nil && token.Value != "" && token.Valid() == nil {
+			}
+			refreshToken = refreshTokenCookie.Value
+
+			accessToken := ""
+			sessionID := uuid.Nil
+			accountID := uuid.Nil
+			accessTokenCookie, err := r.Cookie("accessToken")
+			if err != nil || accessTokenCookie.Value == "" || accessTokenCookie.Valid() != nil {
 				authClient := kroger.NewAuthorizationClient(http.DefaultClient, kroger.PublicEnvironment, config.ClientID, config.ClientSecret)
 				authResp, err := authClient.PostToken(r.Context(), kroger.RefreshToken{
-					RefreshToken: token.Value,
+					RefreshToken: refreshToken,
 				})
 				if err != nil {
-					slog.Error("failed to reauthenticate user with refresh token", "error", err)
-					if r.Header.Get("HX-Request") != "" {
-						w.Header().Add("HX-Redirect", loginRedirectURL)
-					} else {
-						http.Redirect(w, r, loginRedirectURL, http.StatusTemporaryRedirect)
-					}
+					RedirectToLogin(w, r, loginRedirectURL, err)
 					return
 				}
 				identityClient := kroger.NewIdentityClient(http.DefaultClient, kroger.PublicEnvironment, authResp.AccessToken)
 				profileResp, err := identityClient.GetProfile(r.Context())
 				if err != nil {
-					http.Error(w, fmt.Sprintf("Unable to get kroger profile id: %v", err), http.StatusInternalServerError)
+					RedirectToLogin(w, r, loginRedirectURL, fmt.Errorf("unable to get kroger profile id: %w", err))
 					return
 				}
 				account, err := repo.GetAccountByKrogerProfileID(r.Context(), profileResp.Profile.ID)
 				// Refrsh token exists, the user has logged in before and should have an account already
 				if err != nil {
-					http.Error(w, fmt.Sprintf("Unable to get account: %v", err), http.StatusInternalServerError)
+					RedirectToLogin(w, r, loginRedirectURL, fmt.Errorf("unable to get account: %w", err))
 					return
 				}
 				session, err := repo.CreateSession(r.Context(), account.ID)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("Unable to create session: %v", err), http.StatusInternalServerError)
+					RedirectToLogin(w, r, loginRedirectURL, fmt.Errorf("unable to create session: %w", err))
 					return
 				}
 				if err := SetAuthResponseCookies(r.Context(), w, session, authResp); err != nil {
-					http.Error(w, fmt.Sprintf("Unable to set auth cookies: %v", err), http.StatusInternalServerError)
+					RedirectToLogin(w, r, loginRedirectURL, fmt.Errorf("unable to set auth cookies: %w", err))
 					return
 				}
-				next.ServeHTTP(w, r)
-				return
-			}
-			if r.Header.Get("HX-Request") != "" {
-				w.Header().Add("HX-Redirect", loginRedirectURL)
+
+				refreshToken = authResp.RefreshToken
+				accessToken = authResp.AccessToken
+				sessionID = session.ID
+				accountID = account.ID
 			} else {
-				http.Redirect(w, r, loginRedirectURL, http.StatusTemporaryRedirect)
+				accessToken = accessTokenCookie.Value
 			}
+
+			// Session not created when getting new access token
+			if sessionID == uuid.Nil {
+				// Session ID cookie exists
+				if sessionIDCookie, err := r.Cookie("sessionID"); err == nil && sessionIDCookie.Value != "" && sessionIDCookie.Valid() == nil {
+					sessionID, err = uuid.Parse(sessionIDCookie.Value)
+					if err != nil {
+						RedirectToLogin(w, r, loginRedirectURL, fmt.Errorf("unable to parse session id: %w", err))
+						return
+					}
+					session, err := repo.GetSessionByID(r.Context(), sessionID)
+					if err != nil {
+						RedirectToLogin(w, r, loginRedirectURL, fmt.Errorf("Unable to create session: %w", err))
+						return
+					}
+					accountID = session.AccountID
+				} else { // Session ID cookie missing
+					identityClient := kroger.NewIdentityClient(http.DefaultClient, kroger.PublicEnvironment, accessToken)
+					profileResp, err := identityClient.GetProfile(r.Context())
+					if err != nil {
+						RedirectToLogin(w, r, loginRedirectURL, fmt.Errorf("Unable to get kroger profile id: %w", err))
+						return
+					}
+					account, err := repo.GetAccountByKrogerProfileID(r.Context(), profileResp.Profile.ID)
+					// Refrsh token exists, the user has logged in before and should have an account already
+					if err != nil {
+						RedirectToLogin(w, r, loginRedirectURL, fmt.Errorf("Unable to get account: %w", err))
+						return
+					}
+					session, err := repo.CreateSession(r.Context(), account.ID)
+					if err != nil {
+						RedirectToLogin(w, r, loginRedirectURL, fmt.Errorf("Unable to create session: %w", err))
+						return
+					}
+					sessionID = session.ID
+					accountID = account.ID
+
+					http.SetCookie(w, &http.Cookie{
+						Path:     "/",
+						Name:     "sessionID",
+						Value:    session.ID.String(),
+						Secure:   true,
+						HttpOnly: true,
+						SameSite: http.SameSiteLaxMode,
+					})
+				}
+			}
+
+			ctx := context.WithValue(r.Context(), ContextAuthCookies{}, AuthCookies{
+				AccessToken:  accessToken,
+				RefreshToken: refreshToken,
+				SessionID:    sessionID,
+				AccountID:    accountID,
+			})
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
@@ -195,20 +272,10 @@ func ClearAuthCookies(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func GetAccountIDFromRequestSessionCookie(repo *data.Repository, r *http.Request) (uuid.UUID, error) {
-	var sessionID uuid.UUID
-	if sessionIDCookie, err := r.Cookie("sessionID"); err != nil {
-		return uuid.Nil, fmt.Errorf("session ID cookie not found: %w", err)
-	} else if err = sessionIDCookie.Valid(); err != nil {
-		return uuid.Nil, fmt.Errorf("invalid Session ID cookie: %w", err)
-	} else if sessionIDCookie.Value == "" {
-		return uuid.Nil, fmt.Errorf("session ID cookie empty")
-	} else if sessionID, err = uuid.Parse(sessionIDCookie.Value); err != nil {
-		return uuid.Nil, fmt.Errorf("invalid Session ID: %w", err)
+func GetAuthCookies(r *http.Request) (AuthCookies, error) {
+	authCookies, ok := r.Context().Value(ContextAuthCookies{}).(AuthCookies)
+	if !ok {
+		return AuthCookies{}, fmt.Errorf("auth cookies missing")
 	}
-	session, err := repo.GetSessionByID(r.Context(), sessionID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("unable to get session: %w", err)
-	}
-	return session.AccountID, nil
+	return authCookies, nil
 }

@@ -14,13 +14,13 @@ import (
 func NewProductsMux(config Config, repo *data.Repository, cache *data.Cache) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Post("/search", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+			authCookies, err := GetAuthCookies(r)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
 
-			account, err := repo.GetAccountByID(r.Context(), accountID)
+			account, err := repo.GetAccountByID(r.Context(), authCookies.AccountID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return

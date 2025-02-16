@@ -21,20 +21,20 @@ func ProductImageLink(productID, imageSize string) string {
 func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+			authCookies, err := GetAuthCookies(r)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
 
 			recipeID := uuid.MustParse(chi.URLParam(r, "recipeID"))
-			recipe, err := repo.GetRecipe(r.Context(), recipeID, accountID)
+			recipe, err := repo.GetRecipe(r.Context(), recipeID, authCookies.AccountID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
-			if err := templates.Ingredients(accountID, recipe).Render(w); err != nil {
+			if err := templates.Ingredients(authCookies.AccountID, recipe).Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -89,14 +89,14 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 		})
 
 		r.Get("/table", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+			authCookies, err := GetAuthCookies(r)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
 
 			recipeID := uuid.MustParse(chi.URLParam(r, "recipeID"))
-			recipe, err := repo.GetRecipe(r.Context(), recipeID, accountID)
+			recipe, err := repo.GetRecipe(r.Context(), recipeID, authCookies.AccountID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -133,7 +133,7 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 					return
 				}
 
-				account, err := repo.GetAccountByID(r.Context(), accountID)
+				account, err := repo.GetAccountByID(r.Context(), authCookies.AccountID)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -156,7 +156,7 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 				}
 			}
 
-			if err := templates.IngredientsTable(accountID, recipe.AccountID, ingredientProducts).Render(w); err != nil {
+			if err := templates.IngredientsTable(authCookies.AccountID, recipe.AccountID, ingredientProducts).Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}

@@ -15,19 +15,19 @@ import (
 func NewAccountMux(config Config, repo *data.Repository, cache *data.Cache) func(r chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+			authCookies, err := GetAuthCookies(r)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
 
-			account, err := repo.GetAccountByID(r.Context(), accountID)
+			account, err := repo.GetAccountByID(r.Context(), authCookies.AccountID)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("getting account: %v", err), http.StatusInternalServerError)
 				return
 			}
 
-			profile, err := repo.GetProfileByAccountID(r.Context(), accountID)
+			profile, err := repo.GetProfileByAccountID(r.Context(), authCookies.AccountID)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("getting profile: %v", err), http.StatusInternalServerError)
 				return
@@ -83,13 +83,13 @@ func NewAccountMux(config Config, repo *data.Repository, cache *data.Cache) func
 
 		r.Route("/{accountID}", func(r chi.Router) {
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-				callingAccountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+				authCookies, err := GetAuthCookies(r)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+					http.Error(w, err.Error(), http.StatusUnauthorized)
 					return
 				}
 				requestedAccountID := uuid.MustParse(chi.URLParam(r, "accountID"))
-				if callingAccountID != requestedAccountID {
+				if authCookies.AccountID != requestedAccountID {
 					http.Error(w, "deleting account", http.StatusUnauthorized)
 					return
 				}
@@ -101,13 +101,13 @@ func NewAccountMux(config Config, repo *data.Repository, cache *data.Cache) func
 			})
 
 			r.Patch("/settings", func(w http.ResponseWriter, r *http.Request) {
-				callingAccountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+				authCookies, err := GetAuthCookies(r)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+					http.Error(w, err.Error(), http.StatusUnauthorized)
 					return
 				}
 				requestedAccountID := uuid.MustParse(chi.URLParam(r, "accountID"))
-				if callingAccountID != requestedAccountID {
+				if authCookies.AccountID != requestedAccountID {
 					http.Error(w, "deleting account", http.StatusUnauthorized)
 					return
 				}
@@ -177,13 +177,13 @@ func NewAccountMux(config Config, repo *data.Repository, cache *data.Cache) func
 
 			r.Route("/profile", func(r chi.Router) {
 				r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-					callingAccountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+					authCookies, err := GetAuthCookies(r)
 					if err != nil {
-						http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+						http.Error(w, err.Error(), http.StatusUnauthorized)
 						return
 					}
 					requestedAccountID := uuid.MustParse(chi.URLParam(r, "accountID"))
-					if callingAccountID != requestedAccountID {
+					if authCookies.AccountID != requestedAccountID {
 						http.Error(w, "deleting account", http.StatusUnauthorized)
 						return
 					}
@@ -237,13 +237,13 @@ func NewAccountMux(config Config, repo *data.Repository, cache *data.Cache) func
 				})
 
 				r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-					callingAccountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+					authCookies, err := GetAuthCookies(r)
 					if err != nil {
-						http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+						http.Error(w, err.Error(), http.StatusUnauthorized)
 						return
 					}
 					requestedAccountID := uuid.MustParse(chi.URLParam(r, "accountID"))
-					if callingAccountID != requestedAccountID {
+					if authCookies.AccountID != requestedAccountID {
 						http.Error(w, "deleting account", http.StatusUnauthorized)
 						return
 					}
@@ -264,13 +264,13 @@ func NewAccountMux(config Config, repo *data.Repository, cache *data.Cache) func
 				})
 
 				r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
-					callingAccountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+					authCookies, err := GetAuthCookies(r)
 					if err != nil {
-						http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+						http.Error(w, err.Error(), http.StatusUnauthorized)
 						return
 					}
 					requestedAccountID := uuid.MustParse(chi.URLParam(r, "accountID"))
-					if callingAccountID != requestedAccountID {
+					if authCookies.AccountID != requestedAccountID {
 						http.Error(w, "deleting account", http.StatusUnauthorized)
 						return
 					}
@@ -292,13 +292,13 @@ func NewAccountMux(config Config, repo *data.Repository, cache *data.Cache) func
 				})
 
 				r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-					callingAccountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+					authCookies, err := GetAuthCookies(r)
 					if err != nil {
-						http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+						http.Error(w, err.Error(), http.StatusUnauthorized)
 						return
 					}
 					requestedAccountID := uuid.MustParse(chi.URLParam(r, "accountID"))
-					if callingAccountID != requestedAccountID {
+					if authCookies.AccountID != requestedAccountID {
 						http.Error(w, "deleting account", http.StatusUnauthorized)
 						return
 					}

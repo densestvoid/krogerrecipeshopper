@@ -14,13 +14,13 @@ import (
 func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+			authCookies, err := GetAuthCookies(r)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("getting account ID: %v", err), http.StatusUnauthorized)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
 
-			if err := templates.Recipes(accountID).Render(w); err != nil {
+			if err := templates.Recipes(authCookies.AccountID).Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -41,9 +41,9 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 			w.WriteHeader(http.StatusOK)
 		})
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+			authCookies, err := GetAuthCookies(r)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
 
@@ -87,7 +87,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 
 				if err := repo.UpdateRecipe(r.Context(), data.Recipe{
 					ID:              id,
-					AccountID:       accountID,
+					AccountID:       authCookies.AccountID,
 					Name:            name,
 					Description:     description,
 					InstructionType: instructionType,
@@ -98,7 +98,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					return
 				}
 			} else {
-				_, err := repo.CreateRecipe(r.Context(), accountID, name, description, instructionType, instructions, visibility)
+				_, err := repo.CreateRecipe(r.Context(), authCookies.AccountID, name, description, instructionType, instructions, visibility)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("creating recipe: %v", err), http.StatusInternalServerError)
 					return
@@ -108,9 +108,9 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 			w.WriteHeader(http.StatusOK)
 		})
 		r.Post("/search", func(w http.ResponseWriter, r *http.Request) {
-			accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+			authCookies, err := GetAuthCookies(r)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
 
@@ -130,14 +130,14 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 				filters = append(filters, data.ListRecipesFilterByFavorites{})
 			}
 			if len(filters) == 0 {
-				if err := templates.RecipeTable(accountID, nil).Render(w); err != nil {
+				if err := templates.RecipeTable(authCookies.AccountID, nil).Render(w); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 				return
 			}
 
-			recipes, err := repo.ListRecipes(r.Context(), accountID, filters, []data.ListRecipesOrderBy{
+			recipes, err := repo.ListRecipes(r.Context(), authCookies.AccountID, filters, []data.ListRecipesOrderBy{
 				{Field: "name", Direction: "asc"},
 			})
 			if err != nil {
@@ -145,7 +145,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 				return
 			}
 
-			if err := templates.RecipeTable(accountID, recipes).Render(w); err != nil {
+			if err := templates.RecipeTable(authCookies.AccountID, recipes).Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -153,39 +153,39 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 		})
 		r.Route("/{recipeID}", func(r chi.Router) {
 			r.Get("/details", func(w http.ResponseWriter, r *http.Request) {
-				accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+				authCookies, err := GetAuthCookies(r)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+					http.Error(w, err.Error(), http.StatusUnauthorized)
 					return
 				}
 
 				var recipe *data.Recipe
 				if recipeID, err := uuid.Parse(chi.URLParam(r, "recipeID")); err == nil {
-					recipe, err = repo.GetRecipe(r.Context(), recipeID, accountID)
+					recipe, err = repo.GetRecipe(r.Context(), recipeID, authCookies.AccountID)
 					if err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
 					}
 				}
 
-				if err := templates.RecipeDetailsForm(accountID, recipe).Render(w); err != nil {
+				if err := templates.RecipeDetailsForm(authCookies.AccountID, recipe).Render(w); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 				w.WriteHeader(http.StatusOK)
 			})
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-				accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+				authCookies, err := GetAuthCookies(r)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+					http.Error(w, err.Error(), http.StatusUnauthorized)
 					return
 				}
 				recipeID := uuid.Must(uuid.Parse(chi.URLParam(r, "recipeID")))
 
-				if recipe, err := repo.GetRecipe(r.Context(), recipeID, accountID); err != nil {
+				if recipe, err := repo.GetRecipe(r.Context(), recipeID, authCookies.AccountID); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
-				} else if recipe.AccountID != accountID {
+				} else if recipe.AccountID != authCookies.AccountID {
 					http.Error(w, "Can't delete recipes you didn't create", http.StatusBadRequest)
 					return
 				}
@@ -200,15 +200,15 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 			})
 
 			r.Post("/favorite", func(w http.ResponseWriter, r *http.Request) {
-				accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+				authCookies, err := GetAuthCookies(r)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+					http.Error(w, err.Error(), http.StatusUnauthorized)
 					return
 				}
 
 				recipeID := uuid.Must(uuid.Parse(chi.URLParam(r, "recipeID")))
 
-				if err := repo.FavoriteRecipe(r.Context(), recipeID, accountID); err != nil {
+				if err := repo.FavoriteRecipe(r.Context(), recipeID, authCookies.AccountID); err != nil {
 					http.Error(w, fmt.Sprintf("adding favorite recipe: %v", err), http.StatusInternalServerError)
 					return
 				}
@@ -221,15 +221,15 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 			})
 
 			r.Delete("/favorite", func(w http.ResponseWriter, r *http.Request) {
-				accountID, err := GetAccountIDFromRequestSessionCookie(repo, r)
+				authCookies, err := GetAuthCookies(r)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("getting account id: %v", err), http.StatusUnauthorized)
+					http.Error(w, err.Error(), http.StatusUnauthorized)
 					return
 				}
 
 				recipeID := uuid.Must(uuid.Parse(chi.URLParam(r, "recipeID")))
 
-				if err := repo.UnfavoriteRecipe(r.Context(), recipeID, accountID); err != nil {
+				if err := repo.UnfavoriteRecipe(r.Context(), recipeID, authCookies.AccountID); err != nil {
 					http.Error(w, fmt.Sprintf("removing favorite recipe: %v", err), http.StatusInternalServerError)
 					return
 				}
