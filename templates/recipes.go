@@ -265,9 +265,13 @@ func FormInput(id, label string, attributes, input gomponents.Node) gomponents.N
 	)
 }
 
-func FormCheck(id, label string, input gomponents.Node) gomponents.Node {
+func FormCheck(id, label string, isSwitch bool, input gomponents.Node) gomponents.Node {
+	class := "form-check"
+	if isSwitch {
+		class += " form-switch"
+	}
 	return html.Div(
-		html.Class("form-check"),
+		html.Class(class),
 		input,
 		html.Label(
 			html.Class("form-check-label"),

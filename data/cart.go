@@ -65,7 +65,10 @@ func (r *Repository) AddCartProduct(ctx context.Context, accountID uuid.UUID, pr
 		INSERT INTO cart_products (account_id, product_id, quantity, staple)
 		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (account_id, product_id)
-		DO UPDATE SET quantity = cart_products.quantity + EXCLUDED.quantity;
+		DO UPDATE SET quantity = cart_products.quantity + CASE
+			WHEN EXCLUDED.staple THEN 0
+			WHEN not EXCLUDED.staple THEN EXCLUDED.quantity
+		END;
 	`, accountID, productID, quantity, staple)
 	return err
 }
