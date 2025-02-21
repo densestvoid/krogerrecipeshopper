@@ -222,7 +222,6 @@ func Select[T comparable](id, label, name string, selected T, values []T, action
 		html.Select(
 			html.ID(id),
 			html.Class("form-select"),
-			action,
 			html.Name(name),
 			options,
 		),

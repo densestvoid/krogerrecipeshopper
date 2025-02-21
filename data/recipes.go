@@ -90,6 +90,20 @@ func (f ListRecipesFilterByFavorites) listRecipoesFilter() string {
 	return "favorites.account_id IS NOT NULL"
 }
 
+type ListRecipesFilterByVisibilities struct {
+	Visibilities []string
+}
+
+func (f ListRecipesFilterByVisibilities) listRecipoesFilter() string {
+	if len(f.Visibilities) == 0 {
+		return "false"
+	}
+	for i, visibility := range f.Visibilities {
+		f.Visibilities[i] = fmt.Sprintf("'%s'", visibility)
+	}
+	return fmt.Sprintf(`visibility IN (%s)`, strings.Join(f.Visibilities, ","))
+}
+
 type ListRecipesOrderBy struct {
 	Field     string
 	Direction string

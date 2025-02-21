@@ -20,11 +20,70 @@ func Recipes(accountID uuid.UUID) gomponents.Node {
 				gomponents.Text("Recipes"),
 			),
 			html.Div(
+				html.A(
+					html.Class("btn btn-primary"),
+					html.Role("button"),
+					html.Data("bs-toggle", "collapse"),
+					html.Href("#recipe-filters"),
+					gomponents.Text("Filters"),
+				),
+			),
+			html.Form(
+				html.ID("recipe-filters"),
+				html.Class("card card-body collapse"),
+				FormInput(
+					"recipe-name",
+					"Name",
+					nil,
+					html.Input(
+						html.Name("name"),
+						html.Class("form-control"),
+					),
+				),
+				html.Div(
+					html.Class("dropdown"),
+					html.A(
+						html.Class("btn btn-secondary dropdown-toggle"),
+						html.Type("button"),
+						html.Role("button"),
+						html.Data("bs-toggle", "dropdown"),
+						gomponents.Text("Visibility"),
+					),
+					html.Ul(
+						html.Class("text-center dropdown-menu"),
+						html.Li(
+							html.Class("dropdown-item"),
+							FormCheck("", data.VisibilityPublic, false, html.Input(
+								html.Class("form-check-input"),
+								html.Type("checkbox"),
+								html.Value(data.VisibilityPublic),
+								html.Name("visibility"),
+								html.Checked(),
+							)),
+							FormCheck("", data.VisibilityFriends, false, html.Input(
+								html.Class("form-check-input"),
+								html.Type("checkbox"),
+								html.Value(data.VisibilityFriends),
+								html.Name("visibility"),
+								html.Checked(),
+							)),
+							FormCheck("", data.VisibilityPrivate, false, html.Input(
+								html.Class("form-check-input"),
+								html.Type("checkbox"),
+								html.Value(data.VisibilityPrivate),
+								html.Name("visibility"),
+								html.Checked(),
+							)),
+						),
+					),
+				),
 				htmx.Post("/recipes/search"),
+				htmx.Target("#recipe-table"),
 				htmx.Swap("innerHTML"),
 				htmx.Vals(fmt.Sprintf(`{"accountID": "%s"}`, accountID)),
-				htmx.Trigger("load,recipe-update from:body"),
+				htmx.Trigger("load,change delay:500ms,input changed delay:500ms,recipe-update from:body"),
 			),
+			html.Div(html.ID("recipe-table")),
 			ModalButton(
 				"recipe-details-modal",
 				"Add recipe",
@@ -45,11 +104,36 @@ func FavoriteRecipes() gomponents.Node {
 				gomponents.Text("Favorites"),
 			),
 			html.Div(
-				htmx.Post("/recipes/search"),
-				htmx.Swap("innerHTML"),
-				htmx.Vals(`{"favorites": true}`),
-				htmx.Trigger("load,recipe-update from:body"),
+				html.A(
+					html.Class("btn btn-primary"),
+					html.Role("button"),
+					html.Data("bs-toggle", "collapse"),
+					html.Href("#recipe-filters"),
+					gomponents.Text("Filters"),
+				),
 			),
+			html.Form(
+				html.ID("recipe-filters"),
+				html.Class("card card-body collapse"),
+				FormInput(
+					"recipe-name",
+					"Name",
+					nil,
+					html.Input(
+						html.Name("name"),
+						html.Class("form-control"),
+					),
+				),
+				htmx.Post("/recipes/search"),
+				htmx.Target("#recipe-table"),
+				htmx.Swap("innerHTML"),
+				htmx.Vals(fmt.Sprintf(`{
+					"favorites": true,
+					"visibility": ["%s", "%s", "%s"]
+				}`, data.VisibilityPublic, data.VisibilityFriends, data.VisibilityPrivate)),
+				htmx.Trigger("load,change delay:500ms,input changed delay:500ms,recipe-update from:body"),
+			),
+			html.Div(html.ID("recipe-table")),
 		),
 		Modal("recipe-details", "View recipe", nil),
 	})
@@ -72,6 +156,9 @@ func ExploreRecipes() gomponents.Node {
 					htmx.Post("/recipes/search"),
 					htmx.Trigger("input changed delay:500ms, keyup[key=='Enter']"),
 					htmx.Target("#recipes-search-table"),
+					htmx.Vals(fmt.Sprintf(`{
+						"visibility": ["%s", "%s", "%s"]
+					}`, data.VisibilityPublic, data.VisibilityFriends, data.VisibilityPrivate)),
 					htmx.Indicator(".htmx-indicator"),
 				),
 				html.Span(html.Class("htmx-indicator"), gomponents.Text("Searching...")),
