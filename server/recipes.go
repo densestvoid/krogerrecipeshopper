@@ -162,7 +162,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					return
 				}
 
-				var recipe *data.Recipe
+				var recipe data.Recipe
 				if recipeID, err := uuid.Parse(chi.URLParam(r, "recipeID")); err == nil {
 					recipe, err = repo.GetRecipe(r.Context(), recipeID, authCookies.AccountID)
 					if err != nil {
@@ -171,7 +171,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					}
 				}
 
-				if err := templates.RecipeDetailsForm(authCookies.AccountID, recipe).Render(w); err != nil {
+				if err := templates.RecipeDetailsModalContent(authCookies.AccountID, recipe).Render(w); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}

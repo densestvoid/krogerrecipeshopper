@@ -32,7 +32,7 @@ type Recipe struct {
 	Favorite        bool
 }
 
-func (m *Repository) GetRecipe(ctx context.Context, recipeID uuid.UUID, accountID uuid.UUID) (*Recipe, error) {
+func (m *Repository) GetRecipe(ctx context.Context, recipeID uuid.UUID, accountID uuid.UUID) (Recipe, error) {
 	row := m.db.QueryRowContext(ctx, `
 		SELECT
 			id,
@@ -49,10 +49,10 @@ func (m *Repository) GetRecipe(ctx context.Context, recipeID uuid.UUID, accountI
 		recipeID, accountID,
 	)
 	if err := row.Err(); err != nil {
-		return nil, err
+		return Recipe{}, err
 	}
 	var recipe Recipe
-	return &recipe, row.Scan(
+	return recipe, row.Scan(
 		&recipe.ID,
 		&recipe.AccountID,
 		&recipe.Name,

@@ -164,7 +164,7 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 					return
 				}
 
-				if err := templates.CartProductDetailsForm(cartProduct).Render(w); err != nil {
+				if err := templates.CartProductDetailsModalContent(cartProduct).Render(w); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}

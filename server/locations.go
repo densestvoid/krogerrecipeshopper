@@ -69,7 +69,13 @@ func NewLocationsMux(config Config) func(chi.Router) {
 		})
 
 		r.Get("/details", func(w http.ResponseWriter, r *http.Request) {
-			if err := templates.LocationsSearch().Render(w); err != nil {
+			authCookies, err := GetAuthCookies(r)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
+			if err := templates.LocationsSearchModal(authCookies.AccountID).Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}

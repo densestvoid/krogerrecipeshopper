@@ -85,14 +85,11 @@ func Recipes(accountID uuid.UUID) gomponents.Node {
 			),
 			html.Div(html.ID("recipe-table")),
 			ModalButton(
-				"recipe-details-modal",
+				"btn-primary",
 				"Add recipe",
-				"",
-				"/recipes//details",
-				"#recipe-details-form",
+				htmx.Get("/recipes//details"),
 			),
 		),
-		Modal("recipe-details", "Edit recipe", htmx.Post("/recipes")),
 	})
 }
 
@@ -135,7 +132,6 @@ func FavoriteRecipes() gomponents.Node {
 			),
 			html.Div(html.ID("recipe-table")),
 		),
-		Modal("recipe-details", "View recipe", nil),
 	})
 }
 
@@ -165,148 +161,26 @@ func ExploreRecipes() gomponents.Node {
 				html.Div(html.ID("recipes-search-table")),
 			),
 		),
-		Modal("recipe-details", "View recipe", nil),
 	})
 }
 
-func RecipeDetailsForm(accountID uuid.UUID, recipe *data.Recipe) gomponents.Node {
-	if recipe != nil {
-		if recipe.AccountID != accountID {
-			return RecipeDetailsView(recipe)
-		}
-		return gomponents.Group{
-			html.Input(
-				html.Type("hidden"),
-				html.Name("id"),
-				html.Value(recipe.ID.String()),
-			),
-			FormInput("recipe-name", "Recipe name", nil, html.Input(
-				html.ID("recipe-name"),
-				html.Class("form-control"),
-				html.Type("text"),
-				html.Name("name"),
-				html.Value(recipe.Name),
-				html.Required(),
-				Disabled(accountID != recipe.AccountID),
-			)),
-			FormInput("recipe-description", "Recipe description", nil, html.Input(
-				html.ID("recipe-description"),
-				html.Class("form-control"),
-				html.Type("text"),
-				html.Name("description"),
-				html.Value(recipe.Description),
-				Disabled(accountID != recipe.AccountID),
-			)),
-			gomponents.If(accountID == recipe.AccountID, Select("recipeVisibility", "Visibility", "visibility", recipe.Visibility, []string{
-				data.VisibilityPublic,
-				data.VisibilityFriends,
-				data.VisibilityPrivate,
-			}, nil)),
-			html.Div(
-				gomponents.Attr("x-data", fmt.Sprintf("{instructionType: '%s'}", recipe.InstructionType)),
-				html.Div(
-					html.Class("input-group"),
-					html.Span(
-						html.Class("input-group-text"),
-						gomponents.Text("Recipe instructions"),
-					),
-					Select(
-						"recipe-instruction-type",
-						"Instruction type",
-						"instruction-type",
-						recipe.InstructionType,
-						[]string{
-							data.InstructionTypeNone,
-							data.InstructionTypeText,
-							data.InstructionTypeLink,
-						},
-						gomponents.Attr("x-on:change", "instructionType = $event.target.value"),
-					),
-				),
-				html.Textarea(
-					gomponents.Attr("x-show", "instructionType == 'text'"),
-					gomponents.Attr("x-bind:disabled", "instructionType != 'text'"),
-					html.Class("form-control"),
-					html.Name("instructions"),
-					html.Rows("10"),
-					html.Required(),
-					Disabled(accountID != recipe.AccountID),
-					gomponents.If(recipe.InstructionType == data.InstructionTypeText, gomponents.Text(recipe.Instructions)),
-				),
-				html.Input(
-					gomponents.Attr("x-show", "instructionType == 'link'"),
-					gomponents.Attr("x-bind:disabled", "instructionType != 'link'"),
-					html.Class("form-control"),
-					html.Type("url"),
-					html.Name("instructions"),
-					gomponents.If(recipe.InstructionType == data.InstructionTypeLink, html.Value(recipe.Instructions)),
-					html.Required(),
-					Disabled(accountID != recipe.AccountID),
-				),
-			),
-		}
-	}
-	return gomponents.Group{
-		FormInput("recipe-name", "Recipe name", nil, html.Input(
-			html.ID("recipe-name"),
-			html.Class("form-control"),
-			html.Type("text"),
-			html.Name("name"),
-			html.Required(),
-		)),
-		FormInput("recipe-description", "Recipe description", nil, html.Input(
-			html.ID("recipe-description"),
-			html.Class("form-control"),
-			html.Type("text"),
-			html.Name("description"),
-		)),
-		Select("recipeVisibility", "Visibility", "visibility", data.VisibilityPublic, []string{
-			data.VisibilityPrivate,
-			data.VisibilityFriends,
-			data.VisibilityPublic,
-		}, nil),
-		html.Div(
-			gomponents.Attr("x-data", "{instructionType : 'none'}"),
-			html.Div(
-				html.Class("input-group"),
-				html.Span(
-					html.Class("input-group-text"),
-					gomponents.Text("Recipe instructions"),
-				),
-				Select(
-					"recipe-instruction-type",
-					"Instruction type",
-					"instruction-type",
-					data.InstructionTypeNone,
-					[]string{
-						data.InstructionTypeNone,
-						data.InstructionTypeText,
-						data.InstructionTypeLink,
-					},
-					gomponents.Attr("x-on:change", "instructionType = $event.target.value"),
-				),
-			),
-			html.Textarea(
-				gomponents.Attr("x-show", "instructionType == 'text'"),
-				gomponents.Attr("x-bind:disabled", "instructionType != 'text'"),
-				html.Class("form-control"),
-				html.Name("instructions"),
-				html.Rows("10"),
-				html.Required(),
-			),
-			html.Input(
-				gomponents.Attr("x-show", "instructionType == 'link'"),
-				gomponents.Attr("x-bind:disabled", "instructionType != 'link'"),
-				html.Class("form-control"),
-				html.Type("url"),
-				html.Name("instructions"),
-				html.Required(),
-			),
-		),
-	}
+func RecipeDetailsModalContent(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
+	viewOnly := recipe.ID != uuid.Nil && recipe.AccountID != accountID
+
+	return ModalContent(
+		"Recipe details",
+		gomponents.Group{
+			gomponents.If(viewOnly, RecipeDetailsView(recipe)),
+			gomponents.If(!viewOnly, RecipeDetailsEdit(recipe)),
+		},
+		gomponents.Group{
+			ModalDismiss(),
+			gomponents.If(!viewOnly, ModalSubmit()),
+		},
+	)
 }
 
-func RecipeDetailsView(recipe *data.Recipe) gomponents.Node {
+func RecipeDetailsView(recipe data.Recipe) gomponents.Node {
 	return html.Div(
 		html.Class("text-center"),
 		html.H2(gomponents.Text(recipe.Name)),
@@ -335,6 +209,81 @@ func RecipeDetailsView(recipe *data.Recipe) gomponents.Node {
 					html.Type("button"),
 					gomponents.Text("View instructions on site"),
 				)),
+			),
+		),
+	)
+}
+
+func RecipeDetailsEdit(recipe data.Recipe) gomponents.Node {
+	ifExists := func(node gomponents.Node) gomponents.Node {
+		return gomponents.If(recipe.ID != uuid.Nil, node)
+	}
+
+	return ModalForm(
+		htmx.Post("/recipes"),
+		ifExists(html.Input(
+			html.Type("hidden"),
+			html.Name("id"),
+			html.Value(recipe.ID.String()),
+		)),
+		FormInput("recipe-name", "Recipe name", nil, html.Input(
+			html.ID("recipe-name"),
+			html.Class("form-control"),
+			html.Type("text"),
+			html.Name("name"),
+			ifExists(html.Value(recipe.Name)),
+			html.Required(),
+		)),
+		FormInput("recipe-description", "Recipe description", nil, html.Input(
+			html.ID("recipe-description"),
+			html.Class("form-control"),
+			html.Type("text"),
+			html.Name("description"),
+			ifExists(html.Value(recipe.Description)),
+		)),
+		Select("recipeVisibility", "Visibility", "visibility", recipe.Visibility, []string{
+			data.VisibilityPublic,
+			data.VisibilityFriends,
+			data.VisibilityPrivate,
+		}, nil),
+		html.Div(
+			gomponents.Attr("x-data", fmt.Sprintf("{instructionType: '%s'}", recipe.InstructionType)),
+			html.Div(
+				html.Class("input-group"),
+				html.Span(
+					html.Class("input-group-text"),
+					gomponents.Text("Recipe instructions"),
+				),
+				Select(
+					"recipe-instruction-type",
+					"Instruction type",
+					"instruction-type",
+					recipe.InstructionType,
+					[]string{
+						data.InstructionTypeNone,
+						data.InstructionTypeText,
+						data.InstructionTypeLink,
+					},
+					gomponents.Attr("x-on:change", "instructionType = $event.target.value"),
+				),
+			),
+			html.Textarea(
+				gomponents.Attr("x-show", "instructionType == 'text'"),
+				gomponents.Attr("x-bind:disabled", "instructionType != 'text'"),
+				html.Class("form-control"),
+				html.Name("instructions"),
+				html.Rows("10"),
+				html.Required(),
+				gomponents.If(recipe.InstructionType == data.InstructionTypeText, gomponents.Text(recipe.Instructions)),
+			),
+			html.Input(
+				gomponents.Attr("x-show", "instructionType == 'link'"),
+				gomponents.Attr("x-bind:disabled", "instructionType != 'link'"),
+				html.Class("form-control"),
+				html.Type("url"),
+				html.Name("instructions"),
+				gomponents.If(recipe.InstructionType == data.InstructionTypeLink, html.Value(recipe.Instructions)),
+				html.Required(),
 			),
 		),
 	)
@@ -404,11 +353,9 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 	actions := gomponents.Group{
 		html.Li(
 			ModalButton(
-				"recipe-details-modal",
+				"btn-secondary w-100",
 				"Details",
-				"w-100",
-				fmt.Sprintf("/recipes/%s/details", recipe.ID.String()),
-				"#recipe-details-form",
+				htmx.Get(fmt.Sprintf("/recipes/%s/details", recipe.ID.String())),
 			),
 		),
 		html.Li(

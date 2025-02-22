@@ -167,7 +167,7 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 			r.Get("/details", func(w http.ResponseWriter, r *http.Request) {
 				recipeID := uuid.MustParse(chi.URLParam(r, "recipeID"))
 				productID := chi.URLParam(r, "productID")
-				var ingredient *data.Ingredient
+				var ingredient data.Ingredient
 				if productID != "" {
 					var err error
 					ingredient, err = repo.GetIngredient(r.Context(), recipeID, productID)
@@ -177,7 +177,7 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 					}
 				}
 
-				if err := templates.IngredientDetailsForm(ingredient).Render(w); err != nil {
+				if err := templates.IngredientDetailsModalContent(recipeID, ingredient).Render(w); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}

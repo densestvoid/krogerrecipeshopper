@@ -11,7 +11,7 @@ import (
 	"github.com/densestvoid/krogerrecipeshopper/data"
 )
 
-func Ingredients(accountID uuid.UUID, recipe *data.Recipe) gomponents.Node {
+func Ingredients(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 	return BasePage("Ingredients", "/", gomponents.Group{
 		html.Div(
 			html.Class("text-center"),
@@ -24,25 +24,33 @@ func Ingredients(accountID uuid.UUID, recipe *data.Recipe) gomponents.Node {
 				htmx.Trigger("load,ingredient-update from:body"),
 			),
 			gomponents.If(accountID == recipe.AccountID, ModalButton(
-				"ingredient-details-modal",
+				"btn-primary",
 				"Add ingredient",
-				"",
-				fmt.Sprintf("/recipes/%v/ingredients//details", recipe.ID),
-				"#ingredient-details-form",
+				htmx.Get(fmt.Sprintf("/recipes/%v/ingredients//details", recipe.ID)),
 			)),
 		),
-		Modal("ingredient-details", "Edit ingredient", htmx.Post(fmt.Sprintf("/recipes/%v/ingredients", recipe.ID))),
 	})
 }
 
-func IngredientDetailsForm(ingredient *data.Ingredient) gomponents.Node {
-	if ingredient != nil {
-		return gomponents.Group{
-			html.Input(
+func IngredientDetailsModalContent(recipeID uuid.UUID, ingredient data.Ingredient) gomponents.Node {
+	ifExists := func(node gomponents.Node) gomponents.Node {
+		return gomponents.If(ingredient.ProductID != "", node)
+	}
+
+	ifNotExists := func(node gomponents.Node) gomponents.Node {
+		return gomponents.If(ingredient.ProductID == "", node)
+	}
+
+	return ModalContent(
+		"Ingredient Details",
+		ModalForm(
+			htmx.Post(fmt.Sprintf("/recipes/%v/ingredients", recipeID)),
+			ifExists(html.Input(
 				html.Type("hidden"),
 				html.Name("productID"),
 				html.Value(ingredient.ProductID),
-			),
+			)),
+			ifNotExists(ProductsSearch()),
 			html.Div(
 				gomponents.Attr("x-data", fmt.Sprintf("{staple : %t}", ingredient.Staple)),
 				html.Class("input-group"),
@@ -52,16 +60,16 @@ func IngredientDetailsForm(ingredient *data.Ingredient) gomponents.Node {
 						gomponents.Attr("x-on:change", "staple = !staple"),
 						html.ID("ingredient-staple"),
 						html.Class("form-check-input"),
+						html.Name("staple"),
 						html.Role("switch"),
 						html.Type("checkbox"),
 						html.Value("true"),
-						html.Name("staple"),
 						Checked(ingredient.Staple),
 					)),
 				),
 				FormInput("ingredient-quantity", "Ingredient quantity", nil,
 					html.Input(
-						gomponents.Attr("x-bind:value", "staple ? '1' : ''"),
+						gomponents.Attr("x-bind:value", fmt.Sprintf("staple ? '1' : '%s'", ingredient.QuantityDecimalString())),
 						gomponents.Attr("x-bind:disabled", "staple"),
 						html.Class("form-control"),
 						html.Type("number"),
@@ -69,43 +77,16 @@ func IngredientDetailsForm(ingredient *data.Ingredient) gomponents.Node {
 						html.Min("0.01"),
 						html.Step("0.01"),
 						html.Required(),
-						html.Value(fmt.Sprintf("%.2f", float64(ingredient.Quantity)/100)),
+						ifExists(html.Value(ingredient.QuantityDecimalString())),
 					),
 				),
 			),
-		}
-	}
-	return gomponents.Group{
-		ProductsSearch(),
-		html.Div(
-			gomponents.Attr("x-data", "{staple : false}"),
-			html.Class("input-group"),
-			html.Div(
-				html.Class("input-group-text"),
-				FormCheck("ingredient-staple", "Staple", true, html.Input(
-					gomponents.Attr("x-on:change", "staple = !staple"),
-					html.ID("ingredient-staple"),
-					html.Class("form-check-input"),
-					html.Role("switch"),
-					html.Type("checkbox"),
-					html.Value("true"),
-					html.Name("staple"),
-				)),
-			),
-			FormInput("ingredient-quantity", "Ingredient quantity", nil,
-				html.Input(
-					gomponents.Attr("x-bind:value", "staple ? '1' : ''"),
-					gomponents.Attr("x-bind:disabled", "staple"),
-					html.Class("form-control"),
-					html.Type("number"),
-					html.Name("quantity"),
-					html.Min("0.01"),
-					html.Step("0.01"),
-					html.Required(),
-				),
-			),
 		),
-	}
+		gomponents.Group{
+			ModalDismiss(),
+			ModalSubmit(),
+		},
+	)
 }
 
 func Checked(b bool) gomponents.Node {
@@ -247,11 +228,9 @@ func IngredientRow(accountID, recipeAccountID uuid.UUID, ingredient Ingredient) 
 		html.Td(gomponents.Textf("%.2f", float64(ingredient.Quantity)/100)),
 		gomponents.If(accountID == recipeAccountID, html.Td(
 			ModalButton(
-				"ingredient-details-modal",
+				"btn-primary",
 				"Edit details",
-				"",
-				fmt.Sprintf("/recipes/%v/ingredients/%s/details", ingredient.RecipeID, ingredient.ProductID),
-				"#ingredient-details-form",
+				htmx.Get(fmt.Sprintf("/recipes/%v/ingredients/%s/details", ingredient.RecipeID, ingredient.ProductID)),
 			),
 			html.Button(
 				html.Type("button"),

@@ -139,15 +139,6 @@ func Settings(account Account) gomponents.Node {
 		),
 		html.Div(
 			html.Class("card-body"),
-			Modal(
-				"location-select",
-				"Select location",
-				gomponents.Group{
-					htmx.Patch(fmt.Sprintf("/accounts/%s/settings", account.ID)),
-					htmx.Swap("innerHTML"),
-					htmx.Target("#location-info"),
-				},
-			),
 			html.Div(
 				html.Class("row"),
 				html.Div(
@@ -161,11 +152,9 @@ func Settings(account Account) gomponents.Node {
 				),
 			),
 			ModalButton(
-				"location-select-modal",
+				"btn-secondary",
 				"Change location",
-				"d-inline",
-				"/locations/details",
-				"#location-select-form",
+				htmx.Get("/locations/details"),
 			),
 			html.Button(
 				html.Class("btn btn-danger"),
@@ -223,12 +212,14 @@ func Select[T comparable](id, label, name string, selected T, values []T, action
 			html.ID(id),
 			html.Class("form-select"),
 			html.Name(name),
+			action,
 			options,
 		),
 		html.Label(
 			html.For(id),
 			gomponents.Text(label),
 		),
+		html.Required(),
 	)
 }
 
@@ -267,10 +258,12 @@ func ProfilePage(profile data.Profile) gomponents.Node {
 			html.Div(
 				htmx.Post("/recipes/search"),
 				htmx.Swap("innerHTML"),
-				htmx.Vals(fmt.Sprintf(`{"accountID": "%s"}`, profile.AccountID)),
+				htmx.Vals(fmt.Sprintf(`{
+					"accountID": "%s",
+					"visibility": ["%s", "%s"]
+				}`, profile.AccountID, data.VisibilityPublic, data.VisibilityFriends)),
 				htmx.Trigger("load"),
 			),
 		),
-		Modal("recipe-details", "View recipe", nil),
 	})
 }
