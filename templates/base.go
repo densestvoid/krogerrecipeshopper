@@ -78,6 +78,9 @@ func baseBody(bodyNodes gomponents.Node) gomponents.Node {
 			bodyNodes,
 		),
 
+		// Generic multipurpose modal
+		Modal(),
+
 		// Bootstrap JS
 		html.Script(
 			html.Src("https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"),

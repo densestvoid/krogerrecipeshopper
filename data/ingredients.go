@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -13,13 +14,20 @@ type Ingredient struct {
 	Staple    bool
 }
 
-func (m *Repository) GetIngredient(ctx context.Context, recipeID uuid.UUID, productID string) (*Ingredient, error) {
+func (i Ingredient) QuantityDecimalString() string {
+	if i.Quantity == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%.2f", float64(i.Quantity)/100)
+}
+
+func (m *Repository) GetIngredient(ctx context.Context, recipeID uuid.UUID, productID string) (Ingredient, error) {
 	row := m.db.QueryRowContext(ctx, `SELECT product_id, recipe_id, quantity, staple FROM ingredients WHERE product_id = $1 AND recipe_id = $2`, productID, recipeID)
 	if err := row.Err(); err != nil {
-		return nil, err
+		return Ingredient{}, err
 	}
 	var ingredient Ingredient
-	return &ingredient, row.Scan(&ingredient.ProductID, &ingredient.RecipeID, &ingredient.Quantity, &ingredient.Staple)
+	return ingredient, row.Scan(&ingredient.ProductID, &ingredient.RecipeID, &ingredient.Quantity, &ingredient.Staple)
 }
 
 func (m *Repository) ListIngredients(ctx context.Context, recipeID uuid.UUID) ([]Ingredient, error) {

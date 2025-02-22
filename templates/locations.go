@@ -1,37 +1,57 @@
 package templates
 
 import (
+	"fmt"
+
+	"github.com/google/uuid"
 	"maragu.dev/gomponents"
 	htmx "maragu.dev/gomponents-htmx"
 	"maragu.dev/gomponents/html"
 )
 
-func LocationsSearch() gomponents.Node {
-	return html.Div(
-		html.H3(gomponents.Text("Search locations")),
-		html.Div(
-			html.Form(
-				html.Input(
-					html.Class("form-control"),
-					html.Type("number"),
-					html.Name("zipCode"),
-					html.Placeholder("Enter the zip code of your local store"),
-					htmx.Get("/locations"),
-					htmx.Swap("innerHTML"),
-					htmx.Trigger("input changed delay:1s, keyup[key=='Enter']"),
-					htmx.Target("#locations-search-table"),
-					htmx.Indicator(".htmx-indicator"),
+func LocationsSearchModal(accountID uuid.UUID) gomponents.Node {
+	return ModalContent(
+		"Search locations",
+		ModalForm(
+			gomponents.Group{
+				htmx.Patch(fmt.Sprintf("/accounts/%s/settings", accountID)),
+				htmx.Swap("innerHTML"),
+				htmx.Target("#location-info"),
+			},
+
+			// Locations search
+			html.Div(
+				html.Form(
+					html.Input(
+						html.Class("form-control"),
+						html.Type("number"),
+						html.Name("zipCode"),
+						html.Placeholder("Enter the zip code of your local store"),
+						htmx.Get("/locations"),
+						htmx.Swap("innerHTML"),
+						htmx.Trigger("input changed delay:1s, keyup[key=='Enter']"),
+						htmx.Target("#locations-search-table"),
+						htmx.Indicator(".htmx-indicator"),
+					),
 				),
 			),
+
+			// Loctions select
+			html.Div(
+				html.Span(html.Class("htmx-indicator"), gomponents.Text("Searching...")),
+				html.Input(
+					html.Class("d-none"),
+					html.Type("radio"),
+					html.Name("locationID"),
+					html.Required(),
+				),
+				html.Div(html.ID("locations-search-table")),
+			),
 		),
-		html.Span(html.Class("htmx-indicator"), gomponents.Text("Searching...")),
-		html.Input(
-			html.Class("d-none"),
-			html.Type("radio"),
-			html.Name("locationID"),
-			html.Required(),
-		),
-		html.Div(html.ID("locations-search-table")),
+		gomponents.Group{
+			ModalDismiss(),
+			ModalSubmit(),
+		},
 	)
 }
 

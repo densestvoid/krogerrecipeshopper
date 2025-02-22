@@ -31,28 +31,35 @@ func Cart() gomponents.Node {
 				htmx.Trigger("click"),
 			),
 		),
-		Modal("cart-product-details", "Edit product", htmx.Put("/cart/product")),
 	})
 }
 
-func CartProductDetailsForm(cartProduct data.CartProduct) gomponents.Node {
-	return gomponents.Group{
-		html.Input(
-			html.Type("hidden"),
-			html.Name("productID"),
-			html.Value(cartProduct.ProductID),
+func CartProductDetailsModalContent(cartProduct data.CartProduct) gomponents.Node {
+	return ModalContent(
+		"Product Details",
+		ModalForm(
+			htmx.Put("/cart/product"),
+			html.Input(
+				html.Type("hidden"),
+				html.Name("productID"),
+				html.Value(cartProduct.ProductID),
+			),
+			FormInput("product-quantity", "product-quantity", nil, html.Input(
+				html.ID("product-quantity"),
+				html.Class("form-control"),
+				html.Type("number"),
+				html.Name("quantity"),
+				html.Min("0.01"),
+				html.Step("0.01"),
+				html.Required(),
+				html.Value(fmt.Sprintf("%.2f", float64(cartProduct.Quantity)/100)),
+			)),
 		),
-		FormInput("product-quantity", "product-quantity", nil, html.Input(
-			html.ID("product-quantity"),
-			html.Class("form-control"),
-			html.Type("number"),
-			html.Name("quantity"),
-			html.Min("0.01"),
-			html.Step("0.01"),
-			html.Required(),
-			html.Value(fmt.Sprintf("%.2f", float64(cartProduct.Quantity)/100)),
-		)),
-	}
+		gomponents.Group{
+			ModalDismiss(),
+			ModalSubmit(),
+		},
+	)
 }
 
 type CartProduct struct {
@@ -104,11 +111,9 @@ func CartTable(cartProducts []CartProduct) gomponents.Node {
 func CartProductRow(cartProduct CartProduct) gomponents.Node {
 	actions := gomponents.Group{
 		ModalButton(
-			"cart-product-details-modal",
+			"btn-primary",
 			"Edit details",
-			"",
-			fmt.Sprintf("/cart/%v", cartProduct.ProductID),
-			"#cart-product-details-form",
+			htmx.Get(fmt.Sprintf("/cart/%v", cartProduct.ProductID)),
 		),
 	}
 	if cartProduct.Staple {
