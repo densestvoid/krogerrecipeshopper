@@ -171,12 +171,103 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					}
 				}
 
-				if err := templates.RecipeDetailsModalContent(authCookies.AccountID, recipe).Render(w); err != nil {
+				if err := templates.RecipeDetailsModalContent(authCookies.AccountID, recipe, false).Render(w); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 				w.WriteHeader(http.StatusOK)
 			})
+
+			r.Get("/copy", func(w http.ResponseWriter, r *http.Request) {
+				authCookies, err := GetAuthCookies(r)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusUnauthorized)
+					return
+				}
+
+				var recipe data.Recipe
+				if recipeID, err := uuid.Parse(chi.URLParam(r, "recipeID")); err == nil {
+					recipe, err = repo.GetRecipe(r.Context(), recipeID, authCookies.AccountID)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+				}
+
+				if err := templates.RecipeDetailsModalContent(authCookies.AccountID, recipe, true).Render(w); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+			})
+
+			r.Post("/copy", func(w http.ResponseWriter, r *http.Request) {
+				authCookies, err := GetAuthCookies(r)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusUnauthorized)
+					return
+				}
+
+				if err := r.ParseForm(); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				name := r.FormValue("name")
+				if name == "" {
+					http.Error(w, fmt.Sprintf("name missing: %v", err), http.StatusBadRequest)
+					return
+				}
+
+				description := r.FormValue("description")
+
+				instructionType := r.FormValue("instruction-type")
+				if instructionType == "" {
+					http.Error(w, fmt.Sprintf("instruction type missing: %v", err), http.StatusBadRequest)
+					return
+				}
+
+				instructions := r.FormValue("instructions")
+				if instructionType != data.InstructionTypeNone && instructions == "" {
+					http.Error(w, fmt.Sprintf("instructions missing: %v", err), http.StatusBadRequest)
+					return
+				}
+
+				visibility := r.FormValue("visibility")
+				if visibility == "" {
+					http.Error(w, fmt.Sprintf("visibility missing: %v", err), http.StatusBadRequest)
+					return
+				}
+
+				recipeToCopyID, err := uuid.Parse(r.PostForm.Get("id"))
+				if err != nil {
+					http.Error(w, fmt.Sprintf("parsing recipe id: %v", err), http.StatusBadRequest)
+					return
+				}
+
+				newRecipeID, err := repo.CreateRecipe(r.Context(), authCookies.AccountID, name, description, instructionType, instructions, visibility)
+				if err != nil {
+					http.Error(w, fmt.Sprintf("creating new recipe: %v", err), http.StatusInternalServerError)
+					return
+				}
+
+				ingredients, err := repo.ListIngredients(r.Context(), recipeToCopyID)
+				if err != nil {
+					http.Error(w, fmt.Sprintf("listing ingredients to copy: %v", err), http.StatusInternalServerError)
+					return
+				}
+
+				for _, ingredient := range ingredients {
+					if err := repo.CreateIngredient(r.Context(), ingredient.ProductID, newRecipeID, ingredient.Quantity, ingredient.Staple); err != nil {
+						http.Error(w, fmt.Sprintf("adding ingredient to copied recipe: %v", err), http.StatusInternalServerError)
+						return
+					}
+				}
+
+				w.Header().Add("HX-Trigger", "recipe-update")
+				w.WriteHeader(http.StatusOK)
+			})
+
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
 				authCookies, err := GetAuthCookies(r)
 				if err != nil {

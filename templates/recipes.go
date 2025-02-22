@@ -164,14 +164,14 @@ func ExploreRecipes() gomponents.Node {
 	})
 }
 
-func RecipeDetailsModalContent(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
-	viewOnly := recipe.ID != uuid.Nil && recipe.AccountID != accountID
+func RecipeDetailsModalContent(accountID uuid.UUID, recipe data.Recipe, copy bool) gomponents.Node {
+	viewOnly := recipe.ID != uuid.Nil && recipe.AccountID != accountID && !copy
 
 	return ModalContent(
 		"Recipe details",
 		gomponents.Group{
 			gomponents.If(viewOnly, RecipeDetailsView(recipe)),
-			gomponents.If(!viewOnly, RecipeDetailsEdit(recipe)),
+			gomponents.If(!viewOnly, RecipeDetailsEdit(recipe, copy)),
 		},
 		gomponents.Group{
 			ModalDismiss(),
@@ -214,13 +214,14 @@ func RecipeDetailsView(recipe data.Recipe) gomponents.Node {
 	)
 }
 
-func RecipeDetailsEdit(recipe data.Recipe) gomponents.Node {
+func RecipeDetailsEdit(recipe data.Recipe, copy bool) gomponents.Node {
 	ifExists := func(node gomponents.Node) gomponents.Node {
 		return gomponents.If(recipe.ID != uuid.Nil, node)
 	}
 
 	return ModalForm(
-		htmx.Post("/recipes"),
+		gomponents.If(!copy, htmx.Post("/recipes")),
+		gomponents.If(copy, htmx.Post(fmt.Sprintf("/recipes/%s/copy", recipe.ID))),
 		ifExists(html.Input(
 			html.Type("hidden"),
 			html.Name("id"),
@@ -369,6 +370,13 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 			),
 		),
 		FavoriteButton(recipe.ID, recipe.Favorite),
+		html.Li(
+			ModalButton(
+				"btn-secondary w-100",
+				"Copy",
+				htmx.Get(fmt.Sprintf("/recipes/%s/copy", recipe.ID.String())),
+			),
+		),
 	}
 	if accountID == recipe.AccountID {
 		actions = append(actions,
