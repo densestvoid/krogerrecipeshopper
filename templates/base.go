@@ -39,6 +39,13 @@ func baseHead(title, baseURL string) gomponents.Node {
 			html.Content("width=device-width, initial-scale=1, user-scalable=no"),
 		),
 
+		html.Link(
+			html.Rel("icon"),
+			html.Type("image/x-icon"),
+			gomponents.Attr("sizes", "48x48"),
+			html.Href("/favicon.ico"),
+		),
+
 		// Bootstrap CSS
 		html.Link(
 			html.Href("https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"),

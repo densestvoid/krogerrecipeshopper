@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 
+	"github.com/densestvoid/krogerrecipeshopper/assets"
 	"github.com/densestvoid/krogerrecipeshopper/data"
 	"github.com/densestvoid/krogerrecipeshopper/templates"
 )
@@ -26,6 +28,11 @@ func New(ctx context.Context, logger *slog.Logger, config Config, repo *data.Rep
 		NewErrorStatusMiddleware(),
 		NewSlogMiddleware(),
 	)
+
+	// Handlers for favicons
+	mux.Handle("/*", middleware.SetHeader("Cache-Control", "max-age=86400")(
+		http.FileServer(http.FS(assets.Files)),
+	))
 
 	mux.Route("/auth", NewAuthMux(config, repo))
 	mux.Group(func(r chi.Router) {
