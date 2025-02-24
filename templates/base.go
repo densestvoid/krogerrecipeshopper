@@ -88,6 +88,17 @@ func baseBody(bodyNodes gomponents.Node) gomponents.Node {
 		// Generic multipurpose modal
 		Modal(),
 
+		// Kroger API image
+		html.Div(
+			html.Class("position-sticky bottom-0 w-100 bg-body"),
+			html.Hr(),
+			html.Img(
+				html.Class("img-fluid mx-auto d-block"),
+				html.Alt("Integrated with Kroger Developers"),
+				html.Src("https://developer.kroger.com/assets/logos/integrated-blue-text.svg"),
+			),
+		),
+
 		// Bootstrap JS
 		html.Script(
 			html.Src("https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"),

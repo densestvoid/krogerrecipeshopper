@@ -209,6 +209,8 @@ func AuthenticationMiddleware(config Config, repo *data.Repository) func(next ht
 	}
 }
 
+const RefreshTokenMaxAgeSeconds = 15_768_000 // 6 months in seconds, taken from an FAQ response
+
 func SetAuthResponseCookies(ctx context.Context, w http.ResponseWriter, session data.Session, credentials *kroger.PostTokenResponse) error {
 	http.SetCookie(w, &http.Cookie{
 		Path:     "/",
@@ -223,7 +225,7 @@ func SetAuthResponseCookies(ctx context.Context, w http.ResponseWriter, session 
 		Path:     "/",
 		Name:     "refreshToken",
 		Value:    credentials.RefreshToken,
-		MaxAge:   int((time.Hour * 24 * 14) / time.Second), // Two weeks of seconds
+		MaxAge:   RefreshTokenMaxAgeSeconds,
 		Secure:   true,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,

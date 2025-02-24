@@ -25,7 +25,9 @@ func Cart() gomponents.Node {
 			html.Button(
 				html.Type("button"),
 				html.Class("btn btn-primary"),
-				gomponents.Text("Submit"),
+				gomponents.Text("Send to "),
+				html.Img(html.Src("https://developer.kroger.com/assets/logos/kroger.svg")),
+				gomponents.Text(" cart"),
 				htmx.Post("/cart/checkout"),
 				htmx.Swap("none"),
 				htmx.Trigger("click"),
