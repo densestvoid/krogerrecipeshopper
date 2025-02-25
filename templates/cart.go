@@ -72,6 +72,7 @@ type CartProduct struct {
 	ImageURL    string
 	Quantity    int
 	Staple      bool
+	ProductURL  string
 }
 
 func CartTable(cartProducts []CartProduct) gomponents.Node {
@@ -150,7 +151,11 @@ func CartProductRow(cartProduct CartProduct) gomponents.Node {
 			),
 		),
 		html.Td(gomponents.Text(cartProduct.Brand)),
-		html.Td(gomponents.Text(cartProduct.Description)),
+		html.Td(html.A(
+			html.Href(cartProduct.ProductURL),
+			html.Target("_blank"),
+			gomponents.Text(cartProduct.Description),
+		)),
 		html.Td(gomponents.Text(cartProduct.Size)),
 		html.Td(gomponents.Text(fmt.Sprintf("%.2f -> %d", float64(cartProduct.Quantity)/100, int(math.Ceil(float64(cartProduct.Quantity)/100))))),
 		html.Td(actions),

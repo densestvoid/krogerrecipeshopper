@@ -109,5 +109,6 @@ func KrogerProductToCacheProduct(product kroger.Product) data.CacheProduct {
 		Brand:       product.Brand,
 		Description: product.Description,
 		Size:        size,
+		URL:         product.ProductPageURI,
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/densestvoid/krogerrecipeshopper/app"
@@ -77,6 +78,19 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 
 				for _, dataCartProduct := range dataCartProducts {
 					product := productsByID[dataCartProduct.ProductID]
+
+					productURL, err := url.JoinPath(KrogerURL, product.URL)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+
+					productURL, err = url.QueryUnescape(productURL)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+
 					cartProducts = append(cartProducts, templates.CartProduct{
 						ProductID:   product.ProductID,
 						Brand:       product.Brand,
@@ -85,6 +99,7 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 						ImageURL:    ProductImageLink(dataCartProduct.ProductID, account.ImageSize),
 						Quantity:    dataCartProduct.Quantity,
 						Staple:      dataCartProduct.Staple,
+						ProductURL:  productURL,
 					})
 				}
 			}
@@ -243,8 +258,7 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 				return
 			}
 
-			w.Header().Add("HX-Trigger", "cart-update")
-			w.WriteHeader(http.StatusOK)
+			http.Redirect(w, r, KrogerCartURL, http.StatusTemporaryRedirect)
 		})
 	}
 }

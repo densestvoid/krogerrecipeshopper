@@ -160,7 +160,11 @@ func ProductSearchRow(product Product) gomponents.Node {
 			),
 		),
 		html.Td(gomponents.Text(product.Brand)),
-		html.Td(gomponents.Text(product.Description)),
+		html.Td(html.A(
+			html.Href(product.ProductURL),
+			html.Target("_blank"),
+			gomponents.Text(product.Description),
+		)),
 		html.Td(gomponents.Text(product.Size)),
 	)
 }
@@ -171,6 +175,7 @@ type Product struct {
 	Description string
 	Size        string
 	ImageURL    string
+	ProductURL  string
 }
 
 type Ingredient struct {
@@ -223,7 +228,11 @@ func IngredientRow(accountID, recipeAccountID uuid.UUID, ingredient Ingredient) 
 			),
 		),
 		html.Td(gomponents.Text(ingredient.Brand)),
-		html.Td(gomponents.Text(ingredient.Description)),
+		html.Td(html.A(
+			html.Href(ingredient.ProductURL),
+			html.Target("_blank"),
+			gomponents.Text(ingredient.Description),
+		)),
 		html.Td(gomponents.Text(ingredient.Size)),
 		html.Td(gomponents.Textf("%.2f", float64(ingredient.Quantity)/100)),
 		gomponents.If(accountID == recipeAccountID, html.Td(
