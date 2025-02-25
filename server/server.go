@@ -38,7 +38,31 @@ func New(ctx context.Context, logger *slog.Logger, config Config, repo *data.Rep
 	mux.Group(func(r chi.Router) {
 		r.Use(AuthenticationMiddleware(config, repo))
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			if err := templates.DashboardPage().Render(w); err != nil {
+			authCookies, err := GetAuthCookies(r)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
+			account, err := repo.GetAccountByID(ctx, authCookies.AccountID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			switch account.Homepage {
+			case data.HomepageOptionRecipes:
+				http.Redirect(w, r, "/recipes", http.StatusTemporaryRedirect)
+			case data.HomepageOptionFavorites:
+				http.Redirect(w, r, "/favorites", http.StatusTemporaryRedirect)
+			case data.HomepageOptionExplore:
+				http.Redirect(w, r, "/explore", http.StatusTemporaryRedirect)
+			default:
+				http.Redirect(w, r, "/welcome", http.StatusTemporaryRedirect)
+			}
+		})
+		r.Get("/welcome", func(w http.ResponseWriter, r *http.Request) {
+			if err := templates.WelcomePage().Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}

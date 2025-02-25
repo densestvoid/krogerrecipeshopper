@@ -29,7 +29,7 @@ func Menu() gomponents.Node {
 				html.A(
 					html.Class("navbar-brand"),
 					html.Href("#"),
-					gomponents.Text("Kroger Recipes"),
+					gomponents.Text("Grocer Recipe Hub"),
 				),
 				html.Div(
 					html.Class("offcanvas offcanvas-start"),

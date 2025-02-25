@@ -14,6 +14,7 @@ type Account struct {
 	ID        uuid.UUID
 	ImageSize string
 	Location  *data.CacheLocation
+	Homepage  string
 }
 
 func AccountPage(account Account, profile *data.Profile) gomponents.Node {
@@ -167,6 +168,12 @@ func Settings(account Account) gomponents.Node {
 				html.ID("settings-form"),
 				htmx.Patch(fmt.Sprintf("/accounts/%s/settings", account.ID)),
 				htmx.Swap("none"),
+				Select("accountHomepage", "Homepage", "homepage", account.Homepage, []string{
+					data.HomepageOptionWelcome,
+					data.HomepageOptionRecipes,
+					data.HomepageOptionFavorites,
+					data.HomepageOptionExplore,
+				}, nil),
 				Select("accountImageSize", "Image size", "imageSize", account.ImageSize, []string{
 					data.ImageSizeThumbnail,
 					data.ImageSizeSmall,

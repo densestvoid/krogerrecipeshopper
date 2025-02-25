@@ -90,7 +90,7 @@ func baseBody(bodyNodes gomponents.Node) gomponents.Node {
 
 		// Kroger API image
 		html.Div(
-			html.Class("position-sticky bottom-0 w-100 bg-body"),
+			html.Class("w-100 bg-body"), // position-sticky bottom-0
 			html.Hr(),
 			html.Img(
 				html.Class("img-fluid mx-auto d-block"),
