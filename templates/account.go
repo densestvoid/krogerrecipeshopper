@@ -230,11 +230,40 @@ func Select[T comparable](id, label, name string, selected T, values []T, action
 	)
 }
 
-func Profiles(profiles []data.Profile) gomponents.Node {
+func Profiles() gomponents.Node {
+	return BasePage("Profiles", "/", gomponents.Group{
+		html.H1(
+			html.Class("text-center m-2"),
+			gomponents.Text("Profiles"),
+		),
+		html.Div(
+			html.Class("text-center m-2"),
+			html.Div(
+				html.H3(gomponents.Text("Search profiles")),
+				html.Input(
+					html.Class("form-control"),
+					html.Type("search"),
+					html.Name("name"),
+					html.Required(),
+					html.Placeholder("Begin typing to seach profiles"),
+					htmx.Get("/accounts/profiles/search"),
+					htmx.Trigger("input changed delay:500ms, keyup[key=='Enter']"),
+					htmx.Validate("true"),
+					htmx.Target("#profiles-search-results"),
+					htmx.Indicator(".htmx-indicator"),
+				),
+				html.Span(html.Class("htmx-indicator"), gomponents.Text("Searching...")),
+				html.Div(html.ID("profiles-search-results")),
+			),
+		),
+	})
+}
+
+func ProfilesSearchResults(profiles []data.Profile) gomponents.Node {
 	var profileButtons gomponents.Group
 	for _, profile := range profiles {
 		profileButtons = append(profileButtons, html.A(
-			html.Class("flex-row align-self-center p-1"),
+			html.Class("col m-1"),
 			html.Href(fmt.Sprintf("/profiles/%s", profile.AccountID)),
 			html.Button(
 				html.Class("btn btn-secondary w-100 text-nowrap"),
@@ -243,16 +272,10 @@ func Profiles(profiles []data.Profile) gomponents.Node {
 		))
 	}
 
-	return BasePage("Profiles", "/", gomponents.Group{
-		html.H1(
-			html.Class("text-center m-2"),
-			gomponents.Text("Profiles"),
-		),
-		html.Div(
-			html.Class("d-flex container justify-content-center"),
-			profileButtons,
-		),
-	})
+	return html.Div(
+		html.Class("row justify-content-center"),
+		profileButtons,
+	)
 }
 
 func ProfilePage(profile data.Profile) gomponents.Node {

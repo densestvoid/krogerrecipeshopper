@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -188,8 +189,9 @@ func (r *Repository) GetProfileByAccountID(ctx context.Context, accountID uuid.U
 	return &profile, nil
 }
 
-func (r *Repository) ListProfiles(ctx context.Context) ([]Profile, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT account_id, display_name FROM profiles`)
+func (r *Repository) ListProfiles(ctx context.Context, name string) ([]Profile, error) {
+	name = fmt.Sprintf("%%%s%%", name)
+	rows, err := r.db.QueryContext(ctx, `SELECT account_id, display_name FROM profiles WHERE display_name ILIKE $1`, name)
 	if err != nil {
 		return nil, err
 	}
