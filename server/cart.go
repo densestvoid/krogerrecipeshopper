@@ -258,7 +258,8 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 				return
 			}
 
-			http.Redirect(w, r, KrogerCartURL, http.StatusTemporaryRedirect)
+			w.Header().Add("HX-Redirect", KrogerCartURL)
+			w.WriteHeader(http.StatusOK)
 		})
 	}
 }

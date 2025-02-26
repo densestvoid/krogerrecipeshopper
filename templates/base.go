@@ -67,8 +67,7 @@ func baseHead(title, baseURL string) gomponents.Node {
 
 func baseBody(bodyNodes gomponents.Node) gomponents.Node {
 	return html.Body(
-		// Menu
-		Menu(),
+		html.Class("min-vh-100 d-flex flex-column"),
 
 		// HTMX response toast messages
 		html.Div(
@@ -79,18 +78,18 @@ func baseBody(bodyNodes gomponents.Node) gomponents.Node {
 				htmx.Ext("remove-me"),
 			),
 		),
+		// Menu
+		Menu(),
 
-		// Custom page content
 		html.Div(
+			html.Class("flex-grow-1"),
+			// Custom page content
 			bodyNodes,
 		),
 
-		// Generic multipurpose modal
-		Modal(),
-
 		// Kroger API image
 		html.Div(
-			html.Class("w-100 bg-body"), // position-sticky bottom-0
+			html.Class("w-100 bg-body"),
 			html.Hr(),
 			html.Img(
 				html.Class("img-fluid mx-auto d-block"),
@@ -98,6 +97,9 @@ func baseBody(bodyNodes gomponents.Node) gomponents.Node {
 				html.Src("https://developer.kroger.com/assets/logos/integrated-blue-text.svg"),
 			),
 		),
+
+		// Generic multipurpose modal
+		Modal(),
 
 		// Bootstrap JS
 		html.Script(
