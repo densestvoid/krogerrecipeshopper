@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -16,11 +17,19 @@ const (
 	ImageSizeExtraLarge = "xlarge"
 )
 
+const (
+	HomepageOptionWelcome   = "welcome"
+	HomepageOptionRecipes   = "recipes"
+	HomepageOptionFavorites = "favorites"
+	HomepageOptionExplore   = "explore"
+)
+
 type Account struct {
 	ID              uuid.UUID
 	KrogerProfileID uuid.UUID
 	ImageSize       string
 	LocationID      *string
+	Homepage        string
 }
 
 type Session struct {
@@ -43,21 +52,21 @@ func (r *Repository) CreateAccount(ctx context.Context, krogerProfileID uuid.UUI
 }
 
 func (r *Repository) GetAccountByKrogerProfileID(ctx context.Context, krogerProfileID uuid.UUID) (Account, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT id, kroger_profile_id, image_size, location_id FROM accounts WHERE kroger_profile_id = $1`, krogerProfileID)
+	row := r.db.QueryRowContext(ctx, `SELECT id, kroger_profile_id, image_size, location_id, homepage FROM accounts WHERE kroger_profile_id = $1`, krogerProfileID)
 	if err := row.Err(); err != nil {
 		return Account{}, err
 	}
 	var account Account
-	return account, row.Scan(&account.ID, &account.KrogerProfileID, &account.ImageSize, &account.LocationID)
+	return account, row.Scan(&account.ID, &account.KrogerProfileID, &account.ImageSize, &account.LocationID, &account.Homepage)
 }
 
 func (r *Repository) GetAccountByID(ctx context.Context, id uuid.UUID) (Account, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT id, kroger_profile_id, image_size, location_id FROM accounts WHERE id = $1`, id)
+	row := r.db.QueryRowContext(ctx, `SELECT id, kroger_profile_id, image_size, location_id, homepage FROM accounts WHERE id = $1`, id)
 	if err := row.Err(); err != nil {
 		return Account{}, err
 	}
 	var account Account
-	return account, row.Scan(&account.ID, &account.KrogerProfileID, &account.ImageSize, &account.LocationID)
+	return account, row.Scan(&account.ID, &account.KrogerProfileID, &account.ImageSize, &account.LocationID, &account.Homepage)
 }
 
 func (r *Repository) DeleteAccount(ctx context.Context, id uuid.UUID) (retErr error) {
@@ -146,6 +155,11 @@ func (r *Repository) UpdateAccountLocationID(ctx context.Context, id uuid.UUID, 
 	return err
 }
 
+func (r *Repository) UpdateAccountHomepage(ctx context.Context, id uuid.UUID, homepage string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE accounts SET homepage = $2 WHERE id = $1`, id, homepage)
+	return err
+}
+
 func (r *Repository) CreateProfile(ctx context.Context, accountID uuid.UUID, displayName string) (Profile, error) {
 	row := r.db.QueryRowContext(ctx, `
         INSERT INTO profiles (account_id, display_name)
@@ -175,8 +189,9 @@ func (r *Repository) GetProfileByAccountID(ctx context.Context, accountID uuid.U
 	return &profile, nil
 }
 
-func (r *Repository) ListProfiles(ctx context.Context) ([]Profile, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT account_id, display_name FROM profiles`)
+func (r *Repository) ListProfiles(ctx context.Context, name string) ([]Profile, error) {
+	name = fmt.Sprintf("%%%s%%", name)
+	rows, err := r.db.QueryContext(ctx, `SELECT account_id, display_name FROM profiles WHERE display_name ILIKE $1`, name)
 	if err != nil {
 		return nil, err
 	}

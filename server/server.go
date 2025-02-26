@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 
+	"github.com/densestvoid/krogerrecipeshopper/assets"
 	"github.com/densestvoid/krogerrecipeshopper/data"
 	"github.com/densestvoid/krogerrecipeshopper/templates"
 )
@@ -27,11 +29,40 @@ func New(ctx context.Context, logger *slog.Logger, config Config, repo *data.Rep
 		NewSlogMiddleware(),
 	)
 
+	// Handlers for favicons
+	mux.Handle("/*", middleware.SetHeader("Cache-Control", "max-age=86400")(
+		http.FileServer(http.FS(assets.Files)),
+	))
+
 	mux.Route("/auth", NewAuthMux(config, repo))
 	mux.Group(func(r chi.Router) {
 		r.Use(AuthenticationMiddleware(config, repo))
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			if err := templates.DashboardPage().Render(w); err != nil {
+			authCookies, err := GetAuthCookies(r)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
+			account, err := repo.GetAccountByID(ctx, authCookies.AccountID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			switch account.Homepage {
+			case data.HomepageOptionRecipes:
+				http.Redirect(w, r, "/recipes", http.StatusTemporaryRedirect)
+			case data.HomepageOptionFavorites:
+				http.Redirect(w, r, "/favorites", http.StatusTemporaryRedirect)
+			case data.HomepageOptionExplore:
+				http.Redirect(w, r, "/explore", http.StatusTemporaryRedirect)
+			default:
+				http.Redirect(w, r, "/welcome", http.StatusTemporaryRedirect)
+			}
+		})
+		r.Get("/welcome", func(w http.ResponseWriter, r *http.Request) {
+			if err := templates.WelcomePage().Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}

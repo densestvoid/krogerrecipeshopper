@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -130,7 +129,6 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 			if r.Form.Has("favorites") {
 				filters = append(filters, data.ListRecipesFilterByFavorites{})
 			}
-			slog.Info("", "form", r.Form)
 			filters = append(filters, data.ListRecipesFilterByVisibilities{Visibilities: r.Form["visibility"]})
 			if len(filters) == 0 {
 				if err := templates.RecipeTable(authCookies.AccountID, nil).Render(w); err != nil {

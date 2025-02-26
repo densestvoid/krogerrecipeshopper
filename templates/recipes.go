@@ -353,6 +353,7 @@ func RecipeTable(accountID uuid.UUID, recipes []data.Recipe) gomponents.Node {
 func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 	actions := gomponents.Group{
 		html.Li(
+			html.Class("dropdown-item"),
 			ModalButton(
 				"btn-secondary w-100",
 				"Details",
@@ -360,6 +361,7 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 			),
 		),
 		html.Li(
+			html.Class("dropdown-item"),
 			html.A(
 				html.Href(fmt.Sprintf("/recipes/%v/ingredients", recipe.ID)),
 				html.Button(
@@ -371,6 +373,7 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 		),
 		FavoriteButton(recipe.ID, recipe.Favorite),
 		html.Li(
+			html.Class("dropdown-item"),
 			ModalButton(
 				"btn-secondary w-100",
 				"Copy",
@@ -382,6 +385,7 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 		actions = append(actions,
 			html.Li(html.Hr(html.Class("dropdown-divider"))),
 			html.Li(
+				html.Class("dropdown-item"),
 				html.Button(
 					html.Type("button"),
 					html.Class("btn btn-danger w-100"),
@@ -402,7 +406,7 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 			gomponents.Text(recipe.Description)),
 		html.Td(
 			html.Div(
-				html.Class("btn-group"),
+				html.Class("btn-group dropdown-center"),
 				html.Button(
 					html.Type("button"),
 					html.Class("btn btn-primary"),
@@ -427,6 +431,7 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 func FavoriteButton(recipeID uuid.UUID, favorite bool) gomponents.Node {
 	if favorite {
 		return html.Li(
+			html.Class("dropdown-item"),
 			html.Button(
 				html.Role("button"),
 				html.Class("btn btn-secondary w-100"),
@@ -436,6 +441,7 @@ func FavoriteButton(recipeID uuid.UUID, favorite bool) gomponents.Node {
 		)
 	}
 	return html.Li(
+		html.Class("dropdown-item"),
 		html.Button(
 			html.Role("button"),
 			html.Class("btn btn-secondary w-100"),

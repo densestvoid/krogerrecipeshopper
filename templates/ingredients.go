@@ -160,7 +160,11 @@ func ProductSearchRow(product Product) gomponents.Node {
 			),
 		),
 		html.Td(gomponents.Text(product.Brand)),
-		html.Td(gomponents.Text(product.Description)),
+		html.Td(html.A(
+			html.Href(product.ProductURL),
+			html.Target("_blank"),
+			gomponents.Text(product.Description),
+		)),
 		html.Td(gomponents.Text(product.Size)),
 	)
 }
@@ -171,6 +175,7 @@ type Product struct {
 	Description string
 	Size        string
 	ImageURL    string
+	ProductURL  string
 }
 
 type Ingredient struct {
@@ -193,10 +198,7 @@ func IngredientsTable(accountID, recipeAccountID uuid.UUID, ingredients []Ingred
 		html.Class("table table-striped table-bordered text-center align-middle w-100"),
 		html.THead(
 			html.Tr(
-				html.Th(gomponents.Text("Image")),
-				html.Th(gomponents.Text("Brand")),
-				html.Th(gomponents.Text("Description")),
-				html.Th(gomponents.Text("Size")),
+				html.Th(gomponents.Text("Product")),
 				html.Th(gomponents.Text("Quantity")),
 				gomponents.If(accountID == recipeAccountID, html.Th(gomponents.Text("Actions"))),
 			),
@@ -217,28 +219,47 @@ func IngredientsTable(accountID, recipeAccountID uuid.UUID, ingredients []Ingred
 func IngredientRow(accountID, recipeAccountID uuid.UUID, ingredient Ingredient) gomponents.Node {
 	return html.Tr(
 		html.Td(
+			html.Class("d-flex flex-column align-items-center"),
 			html.Img(
-				html.Class("img-fluid img-thumbnail"),
+				html.Class("row img-fluid img-thumbnail"),
 				html.Src(ingredient.ImageURL),
 			),
+			html.Span(gomponents.Text(ingredient.Brand)),
+			html.A(
+				html.Href(ingredient.ProductURL),
+				html.Target("_blank"),
+				gomponents.Text(ingredient.Description),
+			),
+			html.Span(gomponents.Text(ingredient.Size)),
 		),
-		html.Td(gomponents.Text(ingredient.Brand)),
-		html.Td(gomponents.Text(ingredient.Description)),
-		html.Td(gomponents.Text(ingredient.Size)),
 		html.Td(gomponents.Textf("%.2f", float64(ingredient.Quantity)/100)),
 		gomponents.If(accountID == recipeAccountID, html.Td(
-			ModalButton(
-				"btn-primary",
-				"Edit details",
-				htmx.Get(fmt.Sprintf("/recipes/%v/ingredients/%s/details", ingredient.RecipeID, ingredient.ProductID)),
-			),
-			html.Button(
-				html.Type("button"),
-				html.Class("btn btn-danger"),
-				gomponents.Text("Delete"),
-				htmx.Delete(fmt.Sprintf("/recipes/%v/ingredients/%s", ingredient.RecipeID, ingredient.ProductID)),
-				htmx.Swap("none"),
-				htmx.Confirm("Are you sure you want to remove this ingredient from the recipe?"),
+			html.Div(
+				html.Class("btn-group dropdown-center"),
+				ModalButton(
+					"btn-primary",
+					"Edit details",
+					htmx.Get(fmt.Sprintf("/recipes/%v/ingredients/%s/details", ingredient.RecipeID, ingredient.ProductID)),
+				),
+				html.Button(
+					html.Type("button"),
+					html.Class("btn btn-primary dropdown-toggle dropdown-toggle-split"),
+					html.Data("bs-toggle", "dropdown"),
+				),
+				html.Ul(
+					html.Class("dropdown-menu"),
+					html.Li(
+						html.Class("dropdown-item"),
+						html.Button(
+							html.Type("button"),
+							html.Class("btn btn-danger w-100"),
+							gomponents.Text("Delete"),
+							htmx.Delete(fmt.Sprintf("/recipes/%v/ingredients/%s", ingredient.RecipeID, ingredient.ProductID)),
+							htmx.Swap("none"),
+							htmx.Confirm("Are you sure you want to remove this ingredient from the recipe?"),
+						),
+					),
+				),
 			),
 		)),
 	)

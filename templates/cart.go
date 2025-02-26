@@ -25,7 +25,9 @@ func Cart() gomponents.Node {
 			html.Button(
 				html.Type("button"),
 				html.Class("btn btn-primary"),
-				gomponents.Text("Submit"),
+				gomponents.Text("Send to "),
+				html.Img(html.Src("https://developer.kroger.com/assets/logos/kroger.svg")),
+				gomponents.Text(" cart"),
 				htmx.Post("/cart/checkout"),
 				htmx.Swap("none"),
 				htmx.Trigger("click"),
@@ -70,6 +72,7 @@ type CartProduct struct {
 	ImageURL    string
 	Quantity    int
 	Staple      bool
+	ProductURL  string
 }
 
 func CartTable(cartProducts []CartProduct) gomponents.Node {
@@ -86,10 +89,7 @@ func CartTable(cartProducts []CartProduct) gomponents.Node {
 			html.Class("table table-striped table-bordered text-center align-middle w-100"),
 			html.THead(
 				html.Tr(
-					html.Th(gomponents.Text("Image")),
-					html.Th(gomponents.Text("Brand")),
-					html.Th(gomponents.Text("Description")),
-					html.Th(gomponents.Text("Size")),
+					html.Th(gomponents.Text("Product")),
 					html.Th(gomponents.Text("Quantity")),
 					html.Th(gomponents.Text("Actions")),
 				),
@@ -109,48 +109,72 @@ func CartTable(cartProducts []CartProduct) gomponents.Node {
 }
 
 func CartProductRow(cartProduct CartProduct) gomponents.Node {
-	actions := gomponents.Group{
-		ModalButton(
+	var primaryButton gomponents.Node
+	if !cartProduct.Staple {
+		primaryButton = ModalButton(
 			"btn-primary",
-			"Edit details",
+			"Edit",
 			htmx.Get(fmt.Sprintf("/cart/%v", cartProduct.ProductID)),
-		),
-	}
-	if cartProduct.Staple {
-		actions = append(actions,
-			html.Button(
-				html.Type("button"),
-				html.Class("btn btn-primary"),
-				gomponents.Text("Include"),
-				htmx.Post(fmt.Sprintf("/cart/%v/include", cartProduct.ProductID)),
-				htmx.Swap("none"),
-			),
 		)
-
 	} else {
-		actions = append(actions,
-			html.Button(
-				html.Type("button"),
-				html.Class("btn btn-danger"),
-				gomponents.Text("Delete"),
-				htmx.Delete(fmt.Sprintf("/cart/%v", cartProduct.ProductID)),
-				htmx.Swap("none"),
-				htmx.Confirm("Are you sure you want to remove this product from your cart?"),
-			),
+		primaryButton = html.Button(
+			html.Type("button"),
+			html.Class("btn btn-primary"),
+			gomponents.Text("Include"),
+			htmx.Post(fmt.Sprintf("/cart/%v/include", cartProduct.ProductID)),
+			htmx.Swap("none"),
 		)
-
 	}
+
 	return html.Tr(
 		html.Td(
-			html.Img(
-				html.Class("img-fluid img-thumbnail"),
-				html.Src(cartProduct.ImageURL),
+			html.Div(
+				html.Class("d-flex flex-column align-items-center"),
+				html.Img(
+					html.Class("row img-fluid img-thumbnail"),
+					html.Src(cartProduct.ImageURL),
+				),
+				html.Span(gomponents.Text(cartProduct.Brand)),
+				html.A(
+					html.Href(cartProduct.ProductURL),
+					html.Target("_blank"),
+					gomponents.Text(cartProduct.Description),
+				),
+				html.Span(gomponents.Text(cartProduct.Size)),
 			),
 		),
-		html.Td(gomponents.Text(cartProduct.Brand)),
-		html.Td(gomponents.Text(cartProduct.Description)),
-		html.Td(gomponents.Text(cartProduct.Size)),
-		html.Td(gomponents.Text(fmt.Sprintf("%.2f -> %d", float64(cartProduct.Quantity)/100, int(math.Ceil(float64(cartProduct.Quantity)/100))))),
-		html.Td(actions),
+		html.Td(
+			html.Div(
+				html.Class("d-flex flex-column align-items-center"),
+				html.Span(gomponents.Textf("%.2f", float64(cartProduct.Quantity)/100)),
+				html.I(html.Class("bi bi-arrow-down")),
+				html.Span(gomponents.Textf("%d", int(math.Ceil(float64(cartProduct.Quantity)/100)))),
+			),
+		),
+		html.Td(
+			html.Div(
+				html.Class("btn-group dropdown-center"),
+				primaryButton,
+				html.Button(
+					html.Type("button"),
+					html.Class("btn btn-primary dropdown-toggle dropdown-toggle-split"),
+					html.Data("bs-toggle", "dropdown"),
+				),
+				html.Ul(
+					html.Class("dropdown-menu"),
+					html.Li(
+						html.Class("dropdown-item"),
+						html.Button(
+							html.Type("button"),
+							html.Class("btn btn-danger w-100"),
+							gomponents.Text("Delete"),
+							htmx.Delete(fmt.Sprintf("/cart/%v", cartProduct.ProductID)),
+							htmx.Swap("none"),
+							htmx.Confirm("Are you sure you want to remove this product from your cart?"),
+						),
+					),
+				),
+			),
+		),
 	)
 }

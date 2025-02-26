@@ -39,6 +39,13 @@ func baseHead(title, baseURL string) gomponents.Node {
 			html.Content("width=device-width, initial-scale=1, user-scalable=no"),
 		),
 
+		html.Link(
+			html.Rel("icon"),
+			html.Type("image/x-icon"),
+			gomponents.Attr("sizes", "48x48"),
+			html.Href("/favicon.ico"),
+		),
+
 		// Bootstrap CSS
 		html.Link(
 			html.Href("https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"),
@@ -60,8 +67,7 @@ func baseHead(title, baseURL string) gomponents.Node {
 
 func baseBody(bodyNodes gomponents.Node) gomponents.Node {
 	return html.Body(
-		// Menu
-		Menu(),
+		html.Class("min-vh-100 d-flex flex-column"),
 
 		// HTMX response toast messages
 		html.Div(
@@ -72,10 +78,24 @@ func baseBody(bodyNodes gomponents.Node) gomponents.Node {
 				htmx.Ext("remove-me"),
 			),
 		),
+		// Menu
+		Menu(),
 
-		// Custom page content
 		html.Div(
+			html.Class("flex-grow-1"),
+			// Custom page content
 			bodyNodes,
+		),
+
+		// Kroger API image
+		html.Div(
+			html.Class("w-100 bg-body"),
+			html.Hr(),
+			html.Img(
+				html.Class("img-fluid mx-auto d-block"),
+				html.Alt("Integrated with Kroger Developers"),
+				html.Src("https://developer.kroger.com/assets/logos/integrated-blue-text.svg"),
+			),
 		),
 
 		// Generic multipurpose modal

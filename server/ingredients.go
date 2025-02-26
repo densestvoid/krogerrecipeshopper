@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
@@ -141,6 +142,19 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 
 				for _, ingredient := range ingredients {
 					product := productsByID[ingredient.ProductID]
+
+					productURL, err := url.JoinPath(KrogerURL, product.URL)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+
+					productURL, err = url.QueryUnescape(productURL)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+
 					ingredientProducts = append(ingredientProducts, templates.Ingredient{
 						Product: templates.Product{
 							ProductID:   product.ProductID,
@@ -148,6 +162,7 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 							Description: product.Description,
 							Size:        product.Size,
 							ImageURL:    ProductImageLink(ingredient.ProductID, account.ImageSize),
+							ProductURL:  productURL,
 						},
 						RecipeID: ingredient.RecipeID,
 						Quantity: ingredient.Quantity,

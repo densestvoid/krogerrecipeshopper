@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"net/url"
 
 	"github.com/go-chi/chi/v5"
 
@@ -10,6 +11,8 @@ import (
 	"github.com/densestvoid/krogerrecipeshopper/kroger"
 	"github.com/densestvoid/krogerrecipeshopper/templates"
 )
+
+const KrogerURL = "https://www.kroger.com"
 
 func NewProductsMux(config Config, repo *data.Repository, cache *data.Cache) func(chi.Router) {
 	return func(r chi.Router) {
@@ -70,12 +73,26 @@ func NewProductsMux(config Config, repo *data.Repository, cache *data.Cache) fun
 					size = item.Size
 					break
 				}
+
+				productURL, err := url.JoinPath(KrogerURL, product.ProductPageURI)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				productURL, err = url.QueryUnescape(productURL)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
 				products = append(products, templates.Product{
 					ProductID:   product.ProductID,
 					Brand:       product.Brand,
 					Description: product.Description,
 					Size:        size,
 					ImageURL:    ProductImageLink(product.ProductID, account.ImageSize),
+					ProductURL:  productURL,
 				})
 			}
 

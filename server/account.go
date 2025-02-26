@@ -60,6 +60,7 @@ func NewAccountMux(config Config, repo *data.Repository, cache *data.Cache) func
 				ID:        account.ID,
 				ImageSize: account.ImageSize,
 				Location:  location,
+				Homepage:  account.Homepage,
 			}, profile).Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -68,14 +69,33 @@ func NewAccountMux(config Config, repo *data.Repository, cache *data.Cache) func
 		})
 
 		r.Get("/profiles", func(w http.ResponseWriter, r *http.Request) {
-			profiles, err := repo.ListProfiles(r.Context())
+			if err := templates.Profiles().Render(w); err != nil {
+				http.Error(w, fmt.Sprintf("writing profiles page: %v", err), http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		})
+
+		r.Get("/profiles/search", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			name := r.FormValue("name")
+			if name == "" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			profiles, err := repo.ListProfiles(r.Context(), name)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("getting profiles: %v", err), http.StatusInternalServerError)
 				return
 			}
 
-			if err := templates.Profiles(profiles).Render(w); err != nil {
-				http.Error(w, fmt.Sprintf("writing profiles page: %v", err), http.StatusInternalServerError)
+			if err := templates.ProfilesSearchResults(profiles).Render(w); err != nil {
+				http.Error(w, fmt.Sprintf("writing profiles search results: %v", err), http.StatusInternalServerError)
 				return
 			}
 			w.WriteHeader(http.StatusOK)
@@ -122,6 +142,14 @@ func NewAccountMux(config Config, repo *data.Repository, cache *data.Cache) func
 					imageSize := r.FormValue("imageSize")
 					if err := repo.UpdateAccountImageSize(r.Context(), accountID, imageSize); err != nil {
 						http.Error(w, fmt.Sprintf("updating account image size: %v", err), http.StatusInternalServerError)
+						return
+					}
+				}
+
+				if r.Form.Has("homepage") {
+					homepage := r.FormValue("homepage")
+					if err := repo.UpdateAccountHomepage(r.Context(), accountID, homepage); err != nil {
+						http.Error(w, fmt.Sprintf("updating account homepage: %v", err), http.StatusInternalServerError)
 						return
 					}
 				}
@@ -229,6 +257,7 @@ func NewAccountMux(config Config, repo *data.Repository, cache *data.Cache) func
 						ID:        account.ID,
 						ImageSize: account.ImageSize,
 						Location:  location,
+						Homepage:  account.Homepage,
 					}, profile).Render(w); err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
