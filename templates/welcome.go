@@ -9,7 +9,7 @@ func WelcomePage() gomponents.Node {
 	return BasePage("Welcome", "/", gomponents.Group{
 		html.Div(
 			html.Class("m-2 p-2"),
-			html.H3(html.Class("text-center"), gomponents.Text("Welcome to Recipe Shopper!")),
+			html.H3(html.Class("text-center"), gomponents.Text("Welcome to Grocer Recipe Hub!")),
 
 			html.H5(html.Class("text-center"), gomponents.Text("About")),
 			html.P(gomponents.Text(`

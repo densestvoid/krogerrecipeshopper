@@ -54,9 +54,9 @@ func New(ctx context.Context, logger *slog.Logger, config Config, repo *data.Rep
 			case data.HomepageOptionRecipes:
 				http.Redirect(w, r, "/recipes", http.StatusTemporaryRedirect)
 			case data.HomepageOptionFavorites:
-				http.Redirect(w, r, "/favorites", http.StatusTemporaryRedirect)
+				http.Redirect(w, r, "/recipes/favorites", http.StatusTemporaryRedirect)
 			case data.HomepageOptionExplore:
-				http.Redirect(w, r, "/explore", http.StatusTemporaryRedirect)
+				http.Redirect(w, r, "/recipes/explore", http.StatusTemporaryRedirect)
 			default:
 				http.Redirect(w, r, "/welcome", http.StatusTemporaryRedirect)
 			}
