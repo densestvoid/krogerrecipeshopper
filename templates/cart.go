@@ -2,7 +2,9 @@ package templates
 
 import (
 	"fmt"
+	"maps"
 	"math"
+	"slices"
 
 	"github.com/densestvoid/krogerrecipeshopper/data"
 	"maragu.dev/gomponents"
@@ -22,15 +24,36 @@ func Cart() gomponents.Node {
 				htmx.Swap("innerHTML"),
 				htmx.Trigger("load,cart-update from:body"),
 			),
-			html.Button(
-				html.Type("button"),
-				html.Class("btn btn-primary"),
-				gomponents.Text("Send to "),
-				html.Img(html.Src("https://developer.kroger.com/assets/logos/kroger.svg")),
-				gomponents.Text(" cart"),
-				htmx.Post("/cart/checkout"),
-				htmx.Swap("none"),
-				htmx.Trigger("click"),
+			html.Div(
+				html.Class("btn-group"),
+				html.Button(
+					html.Type("button"),
+					html.Class("btn btn-primary"),
+					gomponents.Text("Send to "),
+					html.Img(html.Src("https://developer.kroger.com/assets/logos/kroger.svg")),
+					gomponents.Text(" cart"),
+					htmx.Post("/cart/checkout"),
+					htmx.Swap("none"),
+					htmx.Trigger("click"),
+				),
+				html.Button(
+					html.Type("button"),
+					html.Class("btn btn-primary dropdown-toggle dropdown-toggle-split"),
+					html.Data("bs-toggle", "dropdown"),
+				),
+				html.Ul(
+					html.Class("dropdown-menu"),
+					html.Li(
+						html.Class("dropdown-item"),
+						html.A(
+							html.Class("btn btn-primary"),
+							html.Role("button"),
+							html.Href("/shopping-list"),
+							gomponents.Text("Shop in store"),
+							gomponents.Attr("onclick", "return confirm('All non-included staple products will be removed. Continue?')"),
+						),
+					),
+				),
 			),
 		),
 	})
@@ -73,6 +96,7 @@ type CartProduct struct {
 	Quantity    int
 	Staple      bool
 	ProductURL  string
+	Location    string
 }
 
 func CartTable(cartProducts []CartProduct) gomponents.Node {
@@ -174,6 +198,102 @@ func CartProductRow(cartProduct CartProduct) gomponents.Node {
 						),
 					),
 				),
+			),
+		),
+	)
+}
+
+func ShoppingList() gomponents.Node {
+	return BasePage("Shopping List", "/", gomponents.Group{
+		html.Div(
+			html.Class("text-center"),
+			html.H3(
+				gomponents.Text("Shopping List"),
+			),
+			html.Div(
+				htmx.Get("/shopping-list/table"),
+				htmx.Swap("innerHTML"),
+				htmx.Trigger("load,cart-update from:body"),
+			),
+		),
+	})
+}
+
+func ShoppingListTable(cartProducts []CartProduct) gomponents.Node {
+	var locations = map[string]gomponents.Group{}
+	for _, cartProduct := range cartProducts {
+		locationGroup, ok := locations[cartProduct.Location]
+		if !ok {
+			locationGroup = gomponents.Group{}
+			locations[cartProduct.Location] = locationGroup
+		}
+		locations[cartProduct.Location] = append(locations[cartProduct.Location], ShoppingListRow(cartProduct))
+	}
+
+	locationKeys := slices.Collect(maps.Keys(locations))
+	slices.Sort(locationKeys)
+
+	var locationGroups gomponents.Group
+	for _, location := range locationKeys {
+		locationGroups = append(locationGroups, ShoppingListLocation(location, locations[location]))
+	}
+
+	return gomponents.Group{
+		html.Table(
+			html.Class("table table-striped table-bordered text-center align-middle w-100"),
+			html.THead(
+				html.Tr(
+					html.Th(gomponents.Text("Product")),
+					html.Th(gomponents.Text("Quantity")),
+					html.Th(gomponents.Text("Actions")),
+				),
+			),
+			locationGroups,
+		),
+	}
+}
+
+func ShoppingListLocation(location string, shoppingListRows gomponents.Group) gomponents.Node {
+	return html.TBody(
+		html.Class("table-group-divider"),
+		html.Tr(html.Td(html.ColSpan("6"), gomponents.Text(location))),
+		shoppingListRows,
+	)
+}
+
+func ShoppingListRow(cartProduct CartProduct) gomponents.Node {
+	return html.Tr(
+		html.Td(
+			html.Div(
+				html.Class("d-flex flex-column align-items-center"),
+				html.Img(
+					html.Class("row img-fluid img-thumbnail"),
+					html.Src(cartProduct.ImageURL),
+				),
+				html.Span(gomponents.Text(cartProduct.Brand)),
+				html.A(
+					html.Href(cartProduct.ProductURL),
+					html.Target("_blank"),
+					gomponents.Text(cartProduct.Description),
+				),
+				html.Span(gomponents.Text(cartProduct.Size)),
+			),
+		),
+		html.Td(
+			html.Div(
+				html.Class("d-flex flex-column align-items-center"),
+				html.Span(gomponents.Textf("%.2f", float64(cartProduct.Quantity)/100)),
+				html.I(html.Class("bi bi-arrow-down")),
+				html.Span(gomponents.Textf("%d", int(math.Ceil(float64(cartProduct.Quantity)/100)))),
+			),
+		),
+		html.Td(
+			html.Button(
+				html.Type("button"),
+				html.Class("btn btn-primary w-100"),
+				gomponents.Text("Check"),
+				htmx.Delete(fmt.Sprintf("/cart/%v", cartProduct.ProductID)),
+				htmx.Swap("none"),
 			),
 		),
 	)

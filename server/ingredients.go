@@ -116,6 +116,12 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 
 			ingredientProducts := []templates.Ingredient{}
 			if len(productIDs) != 0 {
+				account, err := repo.GetAccountByID(r.Context(), authCookies.AccountID)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
 				authClient := kroger.NewAuthorizationClient(http.DefaultClient, kroger.PublicEnvironment, config.ClientID, config.ClientSecret)
 				authResp, err := authClient.PostToken(r.Context(), kroger.ClientCredentials{
 					Scope: kroger.ScopeProductCompact,
@@ -128,13 +134,7 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 				locationsClient := kroger.NewLocationsClient(http.DefaultClient, kroger.PublicEnvironment, authResp.AccessToken)
 
 				krogerManager := app.NewKrogerManager(productsClient, locationsClient, cache)
-				productsByID, err := krogerManager.GetProducts(r.Context(), productIDs...)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-
-				account, err := repo.GetAccountByID(r.Context(), authCookies.AccountID)
+				productsByID, err := krogerManager.GetProducts(r.Context(), account.LocationID, productIDs...)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return

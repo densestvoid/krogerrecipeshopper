@@ -74,6 +74,7 @@ func New(ctx context.Context, logger *slog.Logger, config Config, repo *data.Rep
 		r.Route("/products", NewProductsMux(config, repo, cache))
 		r.Route("/locations", NewLocationsMux(config))
 		r.Route("/cart", NewCartMux(config, repo, cache))
+		r.Route("/shopping-list", NewShoppingListMux(config, repo, cache))
 	})
 
 	return mux

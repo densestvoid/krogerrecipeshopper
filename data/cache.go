@@ -29,6 +29,7 @@ type CacheProduct struct {
 	Description string `json:"description"`
 	Size        string `json:"size"`
 	URL         string `json:"url"`
+	Location    string `json:"location"`
 }
 
 func (c *Cache) StoreKrogerProduct(ctx context.Context, products ...CacheProduct) error {
