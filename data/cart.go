@@ -30,10 +30,12 @@ type ListCartProductsFilter interface {
 	listCartProductsFilter() string
 }
 
-type ListCartProductsNonStaples struct{}
+type ListCartProductsIncludeStaples struct {
+	Include bool
+}
 
-func (r *ListCartProductsNonStaples) listCartProductsFilter() string {
-	return "staple = false"
+func (r *ListCartProductsIncludeStaples) listCartProductsFilter() string {
+	return fmt.Sprintf("staple = %t", r.Include)
 }
 
 func (r *Repository) ListCartProducts(ctx context.Context, accountID uuid.UUID, filters ...ListCartProductsFilter) ([]*CartProduct, error) {

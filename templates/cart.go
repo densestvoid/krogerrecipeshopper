@@ -227,7 +227,8 @@ func ShoppingListTable(cartProducts []CartProduct) gomponents.Node {
 			locationGroup = gomponents.Group{}
 			locations[cartProduct.Location] = locationGroup
 		}
-		locations[cartProduct.Location] = append(locations[cartProduct.Location], ShoppingListRow(cartProduct))
+		locationGroup = append(locationGroup, ShoppingListRow(cartProduct))
+		locations[cartProduct.Location] = locationGroup
 	}
 
 	locationKeys := slices.Collect(maps.Keys(locations))

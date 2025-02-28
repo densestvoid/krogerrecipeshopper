@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -28,7 +29,20 @@ func NewShoppingListMux(config Config, repo *data.Repository, cache *data.Cache)
 				return
 			}
 
-			dataCartProducts, err := repo.ListCartProducts(r.Context(), authCookies.AccountID, &data.ListCartProductsNonStaples{})
+			stapleCartProducts, err := repo.ListCartProducts(r.Context(), authCookies.AccountID, &data.ListCartProductsIncludeStaples{Include: true})
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			for _, stapleCartProduct := range stapleCartProducts {
+				if err := repo.RemoveCartProduct(r.Context(), authCookies.AccountID, stapleCartProduct.ProductID); err != nil {
+					http.Error(w, fmt.Sprintf("removing staple cart product: %v", err), http.StatusInternalServerError)
+					return
+				}
+			}
+
+			dataCartProducts, err := repo.ListCartProducts(r.Context(), authCookies.AccountID, &data.ListCartProductsIncludeStaples{Include: false})
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return

@@ -232,7 +232,7 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 			}
 			cartClient := kroger.NewCartClient(http.DefaultClient, kroger.PublicEnvironment, authCookies.AccessToken)
 
-			cartProducts, err := repo.ListCartProducts(r.Context(), authCookies.AccountID, &data.ListCartProductsNonStaples{})
+			cartProducts, err := repo.ListCartProducts(r.Context(), authCookies.AccountID, &data.ListCartProductsIncludeStaples{Include: false})
 			if err != nil {
 				http.Error(w, fmt.Sprintf("listing cart products: %v", err), http.StatusInternalServerError)
 				return
