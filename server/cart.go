@@ -52,6 +52,12 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 
 			cartProducts := []templates.CartProduct{}
 			if len(productIDs) != 0 {
+				account, err := repo.GetAccountByID(r.Context(), authCookies.AccountID)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
 				authClient := kroger.NewAuthorizationClient(http.DefaultClient, kroger.PublicEnvironment, config.ClientID, config.ClientSecret)
 				authResp, err := authClient.PostToken(r.Context(), kroger.ClientCredentials{
 					Scope: kroger.ScopeProductCompact,
@@ -64,13 +70,7 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 				locationsClient := kroger.NewLocationsClient(http.DefaultClient, kroger.PublicEnvironment, authResp.AccessToken)
 
 				krogerManager := app.NewKrogerManager(productsClient, locationsClient, cache)
-				productsByID, err := krogerManager.GetProducts(r.Context(), productIDs...)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-
-				account, err := repo.GetAccountByID(r.Context(), authCookies.AccountID)
+				productsByID, err := krogerManager.GetProducts(r.Context(), account.LocationID, productIDs...)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -100,6 +100,7 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 						Quantity:    dataCartProduct.Quantity,
 						Staple:      dataCartProduct.Staple,
 						ProductURL:  productURL,
+						Location:    product.Location,
 					})
 				}
 			}
@@ -231,7 +232,7 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 			}
 			cartClient := kroger.NewCartClient(http.DefaultClient, kroger.PublicEnvironment, authCookies.AccessToken)
 
-			cartProducts, err := repo.ListCartProducts(r.Context(), authCookies.AccountID, &data.ListCartProductsNonStaples{})
+			cartProducts, err := repo.ListCartProducts(r.Context(), authCookies.AccountID, &data.ListCartProductsIncludeStaples{Include: false})
 			if err != nil {
 				http.Error(w, fmt.Sprintf("listing cart products: %v", err), http.StatusInternalServerError)
 				return

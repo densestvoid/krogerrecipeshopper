@@ -23,7 +23,7 @@ func NewKrogerManager(productsClient *kroger.ProductsClient, locationsClient *kr
 	}
 }
 
-func (m *KrogerManager) GetProducts(ctx context.Context, productIDs ...string) (map[string]data.CacheProduct, error) {
+func (m *KrogerManager) GetProducts(ctx context.Context, locationID *string, productIDs ...string) (map[string]data.CacheProduct, error) {
 	// Get products from cache
 	cachedProdcuts, productIDMisses, err := m.cache.RetrieveKrogerProduct(ctx, productIDs...)
 	if err != nil {
@@ -37,6 +37,7 @@ func (m *KrogerManager) GetProducts(ctx context.Context, productIDs ...string) (
 			Filters: &kroger.GetProductsByIDsFilter{
 				ProductIDs: productIDMisses,
 			},
+			LocationID: locationID,
 		})
 		if err != nil {
 			return nil, err
@@ -104,11 +105,20 @@ func KrogerProductToCacheProduct(product kroger.Product) data.CacheProduct {
 		size = item.Size
 		break
 	}
+
+	var location string
+	for _, aisleLocation := range product.AisleLocations {
+		location = aisleLocation.Description
+		break
+	}
+	fmt.Println(location, product.AisleLocations)
+
 	return data.CacheProduct{
 		ProductID:   product.ProductID,
 		Brand:       product.Brand,
 		Description: product.Description,
 		Size:        size,
 		URL:         product.ProductPageURI,
+		Location:    location,
 	}
 }

@@ -117,6 +117,7 @@ func (c *ProductsClient) GetProducts(ctx context.Context, request GetProductsReq
 		return nil, err
 	}
 
+	fmt.Println(response.Products)
 	return &response, nil
 }
 
