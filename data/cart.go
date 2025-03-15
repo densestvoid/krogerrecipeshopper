@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/stdlib"
 )
 
 type CartProduct struct {
@@ -76,32 +74,33 @@ func (r *Repository) AddCartProduct(ctx context.Context, accountID uuid.UUID, pr
 }
 
 func (r *Repository) SetCartProduct(ctx context.Context, accountID uuid.UUID, productID string, quantity *int, staple *bool) error {
-	dbConn, err := r.db.Conn(ctx)
+	namedArgs := map[string]any{
+		"accountID": accountID,
+		"productID": productID,
+	}
+
+	sets := []string{}
+	if quantity != nil {
+		namedArgs["quantity"] = *quantity
+		sets = append(sets, "quantity = :quantity")
+	}
+	if staple != nil {
+		namedArgs["staple"] = *staple
+		sets = append(sets, "staple = :staple")
+	}
+	if len(sets) == 0 {
+		return nil
+	}
+
+	query := fmt.Sprintf(`UPDATE cart_products SET %s WHERE account_id = :accountID AND product_id = :productID;`, strings.Join(sets, ", "))
+	namedStmt, err := r.db.PrepareNamedContext(ctx, query)
 	if err != nil {
 		return err
 	}
-	return dbConn.Raw(func(driverConn any) error {
-		conn := driverConn.(*stdlib.Conn).Conn() // conn is a *pgx.Conn
-		args := pgx.NamedArgs{
-			"accountID": accountID,
-			"productID": productID,
-		}
-		sets := []string{}
-		if quantity != nil {
-			args["quantity"] = *quantity
-			sets = append(sets, "quantity = @quantity")
-		}
-		if staple != nil {
-			args["staple"] = *staple
-			sets = append(sets, "staple = @staple")
-		}
-		if len(sets) == 0 {
-			return nil
-		}
-		query := fmt.Sprintf(`UPDATE cart_products SET %s WHERE account_id = @accountID AND product_id = @productID;`, strings.Join(sets, ", "))
-		_, err := conn.Exec(ctx, query, args)
-		return err
-	})
+	defer namedStmt.Close()
+
+	_, err = namedStmt.ExecContext(ctx, namedArgs)
+	return err
 }
 
 func (r *Repository) RemoveCartProduct(ctx context.Context, accountID uuid.UUID, productID string) error {
