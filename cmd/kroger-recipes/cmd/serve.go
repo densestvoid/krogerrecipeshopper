@@ -6,7 +6,6 @@ package cmd
 import (
 	"context"
 	"crypto/tls"
-	"database/sql"
 	"fmt"
 	"log"
 	"log/slog"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jmoiron/sqlx"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -29,7 +29,7 @@ var serveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 
-		db, err := sql.Open("pgx", fmt.Sprintf(
+		db, err := sqlx.Open("pgx", fmt.Sprintf(
 			"host=%s port=%d user=%s password=%s sslmode=disable",
 			viper.GetString("db-host"),
 			viper.GetInt("db-port"),
