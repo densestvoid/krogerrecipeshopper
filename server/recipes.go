@@ -79,14 +79,14 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 			}
 
 			if r.PostForm.Has("id") {
-				id, err := uuid.Parse(r.PostForm.Get("id"))
+				listID, err := uuid.Parse(r.PostForm.Get("id"))
 				if err != nil {
 					http.Error(w, fmt.Sprintf("parsing recipe id: %v", err), http.StatusBadRequest)
 					return
 				}
 
 				if err := repo.UpdateRecipe(r.Context(), data.Recipe{
-					ID:              id,
+					ListID:          listID,
 					AccountID:       authCookies.AccountID,
 					Name:            name,
 					Description:     description,
@@ -152,7 +152,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 			}
 			w.WriteHeader(http.StatusOK)
 		})
-		r.Route("/{recipeID}", func(r chi.Router) {
+		r.Route("/{listID}", func(r chi.Router) {
 			r.Get("/details", func(w http.ResponseWriter, r *http.Request) {
 				authCookies, err := GetAuthCookies(r)
 				if err != nil {
@@ -161,8 +161,8 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 				}
 
 				var recipe data.Recipe
-				if recipeID, err := uuid.Parse(chi.URLParam(r, "recipeID")); err == nil {
-					recipe, err = repo.GetRecipe(r.Context(), recipeID, authCookies.AccountID)
+				if listID, err := uuid.Parse(chi.URLParam(r, "listID")); err == nil {
+					recipe, err = repo.GetRecipe(r.Context(), listID, authCookies.AccountID)
 					if err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
@@ -184,8 +184,8 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 				}
 
 				var recipe data.Recipe
-				if recipeID, err := uuid.Parse(chi.URLParam(r, "recipeID")); err == nil {
-					recipe, err = repo.GetRecipe(r.Context(), recipeID, authCookies.AccountID)
+				if listID, err := uuid.Parse(chi.URLParam(r, "listID")); err == nil {
+					recipe, err = repo.GetRecipe(r.Context(), listID, authCookies.AccountID)
 					if err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
@@ -243,7 +243,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					return
 				}
 
-				newRecipeID, err := repo.CreateRecipe(r.Context(), authCookies.AccountID, name, description, instructionType, instructions, visibility)
+				newListID, err := repo.CreateRecipe(r.Context(), authCookies.AccountID, name, description, instructionType, instructions, visibility)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("creating new recipe: %v", err), http.StatusInternalServerError)
 					return
@@ -256,7 +256,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 				}
 
 				for _, ingredient := range ingredients {
-					if err := repo.CreateIngredient(r.Context(), ingredient.ProductID, newRecipeID, ingredient.Quantity, ingredient.Staple); err != nil {
+					if err := repo.CreateIngredient(r.Context(), ingredient.ProductID, newListID, ingredient.Quantity, ingredient.Staple); err != nil {
 						http.Error(w, fmt.Sprintf("adding ingredient to copied recipe: %v", err), http.StatusInternalServerError)
 						return
 					}
@@ -272,9 +272,10 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					http.Error(w, err.Error(), http.StatusUnauthorized)
 					return
 				}
-				recipeID := uuid.Must(uuid.Parse(chi.URLParam(r, "recipeID")))
+				listID := uuid.Must(uuid.Parse(chi.URLParam(r, "listID")))
 
-				if recipe, err := repo.GetRecipe(r.Context(), recipeID, authCookies.AccountID); err != nil {
+				recipe, err := repo.GetRecipe(r.Context(), listID, authCookies.AccountID)
+				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				} else if recipe.AccountID != authCookies.AccountID {
@@ -282,7 +283,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					return
 				}
 
-				if err := repo.DeleteRecipe(r.Context(), recipeID); err != nil {
+				if err := repo.DeleteRecipe(r.Context(), recipe.ListID); err != nil {
 					http.Error(w, fmt.Sprintf("deleting recipe: %v", err), http.StatusInternalServerError)
 					return
 				}
@@ -298,14 +299,14 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					return
 				}
 
-				recipeID := uuid.Must(uuid.Parse(chi.URLParam(r, "recipeID")))
+				listID := uuid.Must(uuid.Parse(chi.URLParam(r, "listID")))
 
-				if err := repo.FavoriteRecipe(r.Context(), recipeID, authCookies.AccountID); err != nil {
+				if err := repo.FavoriteRecipe(r.Context(), listID, authCookies.AccountID); err != nil {
 					http.Error(w, fmt.Sprintf("adding favorite recipe: %v", err), http.StatusInternalServerError)
 					return
 				}
 
-				if err := templates.FavoriteButton(recipeID, true).Render(w); err != nil {
+				if err := templates.FavoriteButton(listID, true).Render(w); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
@@ -319,14 +320,14 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					return
 				}
 
-				recipeID := uuid.Must(uuid.Parse(chi.URLParam(r, "recipeID")))
+				listID := uuid.Must(uuid.Parse(chi.URLParam(r, "listID")))
 
-				if err := repo.UnfavoriteRecipe(r.Context(), recipeID, authCookies.AccountID); err != nil {
+				if err := repo.UnfavoriteRecipe(r.Context(), listID, authCookies.AccountID); err != nil {
 					http.Error(w, fmt.Sprintf("removing favorite recipe: %v", err), http.StatusInternalServerError)
 					return
 				}
 
-				if err := templates.FavoriteButton(recipeID, false).Render(w); err != nil {
+				if err := templates.FavoriteButton(listID, false).Render(w); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}

@@ -19,20 +19,20 @@ func Ingredients(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 				gomponents.Text(fmt.Sprintf("%s ingredients", recipe.Name)),
 			),
 			html.Div(
-				htmx.Get(fmt.Sprintf("/recipes/%v/ingredients/table", recipe.ID)),
+				htmx.Get(fmt.Sprintf("/recipes/%v/ingredients/table", recipe.ListID)),
 				htmx.Swap("innerHTML"),
 				htmx.Trigger("load,ingredient-update from:body"),
 			),
 			gomponents.If(accountID == recipe.AccountID, ModalButton(
 				"btn-primary",
 				"Add ingredient",
-				htmx.Get(fmt.Sprintf("/recipes/%v/ingredients//details", recipe.ID)),
+				htmx.Get(fmt.Sprintf("/recipes/%v/ingredients//details", recipe.ListID)),
 			)),
 		),
 	})
 }
 
-func IngredientDetailsModalContent(recipeID uuid.UUID, ingredient data.Ingredient) gomponents.Node {
+func IngredientDetailsModalContent(listID uuid.UUID, ingredient data.Ingredient) gomponents.Node {
 	ifExists := func(node gomponents.Node) gomponents.Node {
 		return gomponents.If(ingredient.ProductID != "", node)
 	}
@@ -44,7 +44,7 @@ func IngredientDetailsModalContent(recipeID uuid.UUID, ingredient data.Ingredien
 	return ModalContent(
 		"Ingredient Details",
 		ModalForm(
-			htmx.Post(fmt.Sprintf("/recipes/%v/ingredients", recipeID)),
+			htmx.Post(fmt.Sprintf("/recipes/%v/ingredients", listID)),
 			ifExists(html.Input(
 				html.Type("hidden"),
 				html.Name("productID"),
@@ -180,7 +180,7 @@ type Product struct {
 
 type Ingredient struct {
 	Product
-	RecipeID uuid.UUID
+	ListID   uuid.UUID
 	Quantity int
 	Staple   bool
 }
@@ -239,7 +239,7 @@ func IngredientRow(accountID, recipeAccountID uuid.UUID, ingredient Ingredient) 
 				ModalButton(
 					"btn-primary",
 					"Edit details",
-					htmx.Get(fmt.Sprintf("/recipes/%v/ingredients/%s/details", ingredient.RecipeID, ingredient.ProductID)),
+					htmx.Get(fmt.Sprintf("/recipes/%v/ingredients/%s/details", ingredient.ListID, ingredient.ProductID)),
 				),
 				html.Button(
 					html.Type("button"),
@@ -254,7 +254,7 @@ func IngredientRow(accountID, recipeAccountID uuid.UUID, ingredient Ingredient) 
 							html.Type("button"),
 							html.Class("btn btn-danger w-100"),
 							gomponents.Text("Delete"),
-							htmx.Delete(fmt.Sprintf("/recipes/%v/ingredients/%s", ingredient.RecipeID, ingredient.ProductID)),
+							htmx.Delete(fmt.Sprintf("/recipes/%v/ingredients/%s", ingredient.ListID, ingredient.ProductID)),
 							htmx.Swap("none"),
 							htmx.Confirm("Are you sure you want to remove this ingredient from the recipe?"),
 						),

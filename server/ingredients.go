@@ -28,8 +28,8 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 				return
 			}
 
-			recipeID := uuid.MustParse(chi.URLParam(r, "recipeID"))
-			recipe, err := repo.GetRecipe(r.Context(), recipeID, authCookies.AccountID)
+			listID := uuid.MustParse(chi.URLParam(r, "listID"))
+			recipe, err := repo.GetRecipe(r.Context(), listID, authCookies.AccountID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -43,7 +43,7 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 		})
 
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-			recipeID := uuid.MustParse(chi.URLParam(r, "recipeID"))
+			listID := uuid.MustParse(chi.URLParam(r, "listID"))
 
 			if err := r.ParseForm(); err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
@@ -71,15 +71,15 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 				quantityPercent = int(quantityFloat * 100)
 			}
 
-			if _, err := repo.GetIngredient(r.Context(), recipeID, productID); err != nil {
+			if _, err := repo.GetIngredient(r.Context(), listID, productID); err != nil {
 				// Doesn't exist, create it
-				if err := repo.CreateIngredient(r.Context(), productID, recipeID, quantityPercent, staple); err != nil {
+				if err := repo.CreateIngredient(r.Context(), productID, listID, quantityPercent, staple); err != nil {
 					http.Error(w, fmt.Sprintf("creating ingredient: %v", err), http.StatusInternalServerError)
 					return
 				}
 			} else {
 				// Exists, update it
-				if err := repo.UpdateIngredient(r.Context(), productID, recipeID, quantityPercent, staple); err != nil {
+				if err := repo.UpdateIngredient(r.Context(), productID, listID, quantityPercent, staple); err != nil {
 					http.Error(w, fmt.Sprintf("updating ingredient: %v", err), http.StatusInternalServerError)
 					return
 				}
@@ -96,13 +96,13 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 				return
 			}
 
-			recipeID := uuid.MustParse(chi.URLParam(r, "recipeID"))
-			recipe, err := repo.GetRecipe(r.Context(), recipeID, authCookies.AccountID)
+			listID := uuid.MustParse(chi.URLParam(r, "listID"))
+			recipe, err := repo.GetRecipe(r.Context(), listID, authCookies.AccountID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			ingredients, err := repo.ListIngredients(r.Context(), recipeID)
+			ingredients, err := repo.ListIngredients(r.Context(), listID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -164,7 +164,7 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 							ImageURL:    ProductImageLink(ingredient.ProductID, account.ImageSize),
 							ProductURL:  productURL,
 						},
-						RecipeID: ingredient.RecipeID,
+						ListID:   ingredient.ListID,
 						Quantity: ingredient.Quantity,
 						Staple:   ingredient.Staple,
 					})
@@ -180,19 +180,19 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 
 		r.Route("/{productID}", func(r chi.Router) {
 			r.Get("/details", func(w http.ResponseWriter, r *http.Request) {
-				recipeID := uuid.MustParse(chi.URLParam(r, "recipeID"))
+				listID := uuid.MustParse(chi.URLParam(r, "listID"))
 				productID := chi.URLParam(r, "productID")
 				var ingredient data.Ingredient
 				if productID != "" {
 					var err error
-					ingredient, err = repo.GetIngredient(r.Context(), recipeID, productID)
+					ingredient, err = repo.GetIngredient(r.Context(), listID, productID)
 					if err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
 					}
 				}
 
-				if err := templates.IngredientDetailsModalContent(recipeID, ingredient).Render(w); err != nil {
+				if err := templates.IngredientDetailsModalContent(listID, ingredient).Render(w); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
@@ -200,9 +200,9 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 			})
 
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-				recipeID := uuid.Must(uuid.Parse(chi.URLParam(r, "recipeID")))
+				listID := uuid.Must(uuid.Parse(chi.URLParam(r, "listID")))
 				productID := chi.URLParam(r, "productID")
-				if err := repo.DeleteIngredient(r.Context(), productID, recipeID); err != nil {
+				if err := repo.DeleteIngredient(r.Context(), productID, listID); err != nil {
 					http.Error(w, fmt.Sprintf("deleting ingredient: %v", err), http.StatusInternalServerError)
 					return
 				}
