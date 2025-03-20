@@ -165,7 +165,7 @@ func ExploreRecipes() gomponents.Node {
 }
 
 func RecipeDetailsModalContent(accountID uuid.UUID, recipe data.Recipe, copy bool) gomponents.Node {
-	viewOnly := recipe.ID != uuid.Nil && recipe.AccountID != accountID && !copy
+	viewOnly := recipe.ListID != uuid.Nil && recipe.AccountID != accountID && !copy
 
 	return ModalContent(
 		"Recipe details",
@@ -216,16 +216,16 @@ func RecipeDetailsView(recipe data.Recipe) gomponents.Node {
 
 func RecipeDetailsEdit(recipe data.Recipe, copy bool) gomponents.Node {
 	ifExists := func(node gomponents.Node) gomponents.Node {
-		return gomponents.If(recipe.ID != uuid.Nil, node)
+		return gomponents.If(recipe.ListID != uuid.Nil, node)
 	}
 
 	return ModalForm(
 		gomponents.If(!copy, htmx.Post("/recipes")),
-		gomponents.If(copy, htmx.Post(fmt.Sprintf("/recipes/%s/copy", recipe.ID))),
+		gomponents.If(copy, htmx.Post(fmt.Sprintf("/recipes/%s/copy", recipe.ListID))),
 		ifExists(html.Input(
 			html.Type("hidden"),
 			html.Name("id"),
-			html.Value(recipe.ID.String()),
+			html.Value(recipe.ListID.String()),
 		)),
 		FormInput("recipe-name", "Recipe name", nil, html.Input(
 			html.ID("recipe-name"),
@@ -357,13 +357,13 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 			ModalButton(
 				"btn-secondary w-100",
 				"Details",
-				htmx.Get(fmt.Sprintf("/recipes/%s/details", recipe.ID.String())),
+				htmx.Get(fmt.Sprintf("/recipes/%s/details", recipe.ListID.String())),
 			),
 		),
 		html.Li(
 			html.Class("dropdown-item"),
 			html.A(
-				html.Href(fmt.Sprintf("/recipes/%v/ingredients", recipe.ID)),
+				html.Href(fmt.Sprintf("/lists/%v/ingredients", recipe.ListID)),
 				html.Button(
 					html.Type("button"),
 					html.Class("btn btn-secondary w-100"),
@@ -371,13 +371,13 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 				),
 			),
 		),
-		FavoriteButton(recipe.ID, recipe.Favorite),
+		FavoriteButton(recipe.ListID, recipe.Favorite),
 		html.Li(
 			html.Class("dropdown-item"),
 			ModalButton(
 				"btn-secondary w-100",
 				"Copy",
-				htmx.Get(fmt.Sprintf("/recipes/%s/copy", recipe.ID.String())),
+				htmx.Get(fmt.Sprintf("/recipes/%s/copy", recipe.ListID.String())),
 			),
 		),
 	}
@@ -390,7 +390,7 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 					html.Type("button"),
 					html.Class("btn btn-danger w-100"),
 					gomponents.Text("Delete"),
-					htmx.Delete(fmt.Sprintf("/recipes/%v", recipe.ID)),
+					htmx.Delete(fmt.Sprintf("/recipes/%v", recipe.ListID)),
 					htmx.Swap("none"),
 					htmx.Confirm("Are you sure you want to delete this recipe?"),
 				),
@@ -411,7 +411,7 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 					html.Type("button"),
 					html.Class("btn btn-primary"),
 					gomponents.Text("Add to cart"),
-					htmx.Post(fmt.Sprintf("/cart/recipe/%v", recipe.ID)),
+					htmx.Post(fmt.Sprintf("/cart/list/%v", recipe.ListID)),
 					htmx.Swap("none"),
 				),
 				html.Button(
@@ -428,7 +428,7 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 	)
 }
 
-func FavoriteButton(recipeID uuid.UUID, favorite bool) gomponents.Node {
+func FavoriteButton(listID uuid.UUID, favorite bool) gomponents.Node {
 	if favorite {
 		return html.Li(
 			html.Class("dropdown-item"),
@@ -436,7 +436,7 @@ func FavoriteButton(recipeID uuid.UUID, favorite bool) gomponents.Node {
 				html.Role("button"),
 				html.Class("btn btn-secondary w-100"),
 				gomponents.Text("Unfavorite"),
-				htmx.Delete(fmt.Sprintf("/recipes/%v/favorite", recipeID)),
+				htmx.Delete(fmt.Sprintf("/recipes/%v/favorite", listID)),
 			),
 		)
 	}
@@ -446,7 +446,7 @@ func FavoriteButton(recipeID uuid.UUID, favorite bool) gomponents.Node {
 			html.Role("button"),
 			html.Class("btn btn-secondary w-100"),
 			gomponents.Text("Favorite"),
-			htmx.Post(fmt.Sprintf("/recipes/%v/favorite", recipeID)),
+			htmx.Post(fmt.Sprintf("/recipes/%v/favorite", listID)),
 		),
 	)
 }

@@ -70,31 +70,34 @@ func (r *Repository) GetAccountByID(ctx context.Context, id uuid.UUID) (Account,
 }
 
 func (r *Repository) DeleteAccount(ctx context.Context, id uuid.UUID) (retErr error) {
-	tx, err := r.db.BeginTx(ctx, nil)
+	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	defer func() {
-		if retErr == nil {
-			return
-		}
-		if deferErr := tx.Rollback(); deferErr != nil {
-			retErr = errors.Join(retErr, deferErr)
-		}
-	}()
+	defer Rollback(tx, &retErr)
 
 	// Clear ingredients
-	if _, err := tx.ExecContext(ctx, `DELETE FROM ingredients USING recipes WHERE ingredients.recipe_id = recipes.id AND recipes.account_id = $1`, id); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM ingredients USING recipe_list_view AS recipes WHERE ingredients.list_id = recipes.list_id AND recipes.account_id = $1`, id); err != nil {
+		return err
+	}
+
+	// Clear favorites
+	if _, err := tx.ExecContext(ctx, `DELETE FROM favorites USING recipe_list_view AS recipes WHERE favorites.list_id = recipes.list_id AND recipes.account_id = $1`, id); err != nil {
 		return err
 	}
 
 	// Clear recipes
-	if _, err := tx.ExecContext(ctx, `DELETE FROM recipes WHERE recipes.account_id = $1`, id); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM recipes USING lists WHERE lists.id = recipes.list_id AND lists.account_id = $1`, id); err != nil {
 		return err
 	}
 
-	// clear favorites
+	// Clear lists
+	if _, err := tx.ExecContext(ctx, `DELETE FROM lists WHERE lists.account_id = $1`, id); err != nil {
+		return err
+	}
+
+	// Clear favorites
 	if _, err := tx.ExecContext(ctx, `DELETE FROM favorites WHERE favorites.account_id = $1`, id); err != nil {
 		return err
 	}

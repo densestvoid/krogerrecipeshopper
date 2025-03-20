@@ -112,15 +112,15 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 			w.WriteHeader(http.StatusOK)
 		})
 
-		r.Post("/recipe/{recipeID}", func(w http.ResponseWriter, r *http.Request) {
+		r.Post("/list/{listID}", func(w http.ResponseWriter, r *http.Request) {
 			authCookies, err := GetAuthCookies(r)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
 
-			recipeID := uuid.MustParse(chi.URLParam(r, "recipeID"))
-			ingredients, err := repo.ListIngredients(r.Context(), recipeID)
+			listID := uuid.MustParse(chi.URLParam(r, "listID"))
+			ingredients, err := repo.ListIngredients(r.Context(), listID)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("listing ingredients: %v", err), http.StatusInternalServerError)
 				return

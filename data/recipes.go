@@ -2,7 +2,6 @@ package data
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -22,7 +21,7 @@ const (
 )
 
 type Recipe struct {
-	ID              uuid.UUID `db:"id"`
+	ListID          uuid.UUID `db:"list_id"`
 	AccountID       uuid.UUID `db:"account_id"`
 	Name            string    `db:"name"`
 	Description     string    `db:"description"`
@@ -32,23 +31,25 @@ type Recipe struct {
 	Favorite        bool      `db:"favorite"`
 }
 
-func (m *Repository) GetRecipe(ctx context.Context, recipeID uuid.UUID, accountID uuid.UUID) (Recipe, error) {
-	var recipe Recipe
-	return recipe, m.db.GetContext(ctx, &recipe, `
+func (r *Repository) GetRecipe(ctx context.Context, listID uuid.UUID, accountID uuid.UUID) (Recipe, error) {
+	namedQuery, err := r.db.PrepareNamedContext(ctx, `
 		SELECT
-			id,
-			recipes.account_id AS account_id,
-			name,
-			description, 
-			instruction_type,
-			instructions,
-			visibility,
+			recipes.*,
 			favorites.account_id IS NOT NULL as favorite
-		FROM recipes
-			LEFT JOIN favorites ON favorites.recipe_id = recipes.id AND favorites.account_id = $2
-		WHERE id = $1`,
-		recipeID, accountID,
-	)
+		FROM recipe_list_view AS recipes
+			LEFT JOIN favorites ON favorites.list_id = recipes.list_id AND favorites.account_id = :accountID
+		WHERE recipes.list_id = :listID
+	`)
+	if err != nil {
+		return Recipe{}, err
+	}
+	defer namedQuery.Close()
+
+	var recipe Recipe
+	return recipe, namedQuery.GetContext(ctx, &recipe, map[string]any{
+		"listID":    listID,
+		"accountID": accountID,
+	})
 }
 
 type ListRecipesFilter interface {
@@ -96,19 +97,13 @@ type ListRecipesOrderBy struct {
 	Direction string
 }
 
-func (m *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filters []ListRecipesFilter, orderBys []ListRecipesOrderBy) ([]Recipe, error) {
+func (r *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filters []ListRecipesFilter, orderBys []ListRecipesOrderBy) ([]Recipe, error) {
 	query := `
 		SELECT
-			id,
-			recipes.account_id,
-			name,
-			description, 
-			instruction_type,
-			instructions,
-			visibility,
+			recipes.*,
 			favorites.account_id IS NOT NULL as favorite
-		FROM recipes
-			LEFT JOIN favorites ON favorites.recipe_id = recipes.id AND favorites.account_id = :accountID
+		FROM recipe_list_view AS recipes
+			LEFT JOIN favorites ON favorites.list_id = recipes.list_id AND favorites.account_id = :accountID
 		WHERE (recipes.account_id = :accountID OR visibility = 'public')
 	`
 	namedArgs := map[string]any{"accountID": accountID}
@@ -129,7 +124,7 @@ func (m *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filte
 		query += strings.Join(orderStrings, ", ")
 	}
 
-	namedQuery, err := m.db.PrepareNamedContext(ctx, query)
+	namedQuery, err := r.db.PrepareNamedContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -139,93 +134,112 @@ func (m *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filte
 	return recipes, namedQuery.Select(&recipes, namedArgs)
 }
 
-func (m *Repository) CreateRecipe(ctx context.Context, accountID uuid.UUID, name, description, instructionType, instructions, visibility string) (uuid.UUID, error) {
-	namedQuery, err := m.db.PrepareNamedContext(ctx, `
+func (r *Repository) CreateRecipe(ctx context.Context, accountID uuid.UUID, name, description, instructionType, instructions, visibility string) (listID uuid.UUID, retErr error) {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	defer Rollback(tx, &retErr)
+
+	listID, err = r.createList(ctx, tx, accountID, name, description)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	namedQuery, err := tx.PrepareNamedContext(ctx, `
 		INSERT INTO recipes(
-			account_id,
-			name,
-			description,
+		    list_id,
 			instruction_type,
 			instructions,
 			visibility
 		) VALUES (
-			:accountID,
-			:name,
-			:description,
+			:listID,
 			:instructionType,
 			:instructions,
 			:visibility
-		) RETURNING id
+		)
 	`)
 	if err != nil {
 		return uuid.Nil, err
 	}
 
 	var id uuid.UUID
-	return id, namedQuery.GetContext(ctx, &id, map[string]any{
-		"accountID":       accountID,
-		"name":            name,
-		"description":     description,
+	if _, err := namedQuery.ExecContext(ctx, map[string]any{
+		"listID":          listID,
 		"instructionType": instructionType,
 		"instructions":    instructions,
 		"visibility":      visibility,
-	})
+	}); err != nil {
+		return uuid.Nil, err
+	}
+
+	return id, tx.Commit()
 }
 
-func (m *Repository) UpdateRecipe(ctx context.Context, recipe Recipe) error {
-	namedStmt, err := m.db.PrepareNamedContext(ctx, `
+func (r *Repository) UpdateRecipe(ctx context.Context, recipe Recipe) (retErr error) {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer Rollback(tx, &retErr)
+
+	if err := r.updateList(ctx, tx, List{
+		ID:          recipe.ListID,
+		AccountID:   recipe.AccountID,
+		Name:        recipe.Name,
+		Description: recipe.Description,
+	}); err != nil {
+		return err
+	}
+
+	namedQuery, err := r.db.PrepareNamedContext(ctx, `
 		UPDATE recipes
-		SET
-			name=:name,
-			description=:description,
-			instruction_type=:instructionType,
-			instructions=:instructions,
-			visibility=:visibility
-		WHERE id=:id
+		SET instruction_type = :instructionType, instructions = :instructions, visibility = :visibility
+		WHERE list_id = :listID
 	`)
 	if err != nil {
 		return err
 	}
-	_, err = namedStmt.ExecContext(ctx, map[string]any{
-		"name":            recipe.Name,
-		"description":     recipe.Description,
+
+	if _, err := namedQuery.ExecContext(ctx, map[string]any{
+		"listID":          recipe.ListID,
 		"instructionType": recipe.InstructionType,
 		"instructions":    recipe.Instructions,
 		"visibility":      recipe.Visibility,
-		"id":              recipe.ID,
-	})
+	}); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (m *Repository) FavoriteRecipe(ctx context.Context, listID, accountID uuid.UUID) error {
+	_, err := m.db.ExecContext(ctx, `INSERT INTO favorites(list_id, account_id) VALUES ($1, $2)`, listID, accountID)
 	return err
 }
 
-func (m *Repository) FavoriteRecipe(ctx context.Context, recipeID, accountID uuid.UUID) error {
-	_, err := m.db.ExecContext(ctx, `INSERT INTO favorites(recipe_id, account_id) VALUES ($1, $2)`, recipeID, accountID)
+func (m *Repository) UnfavoriteRecipe(ctx context.Context, listID, accountID uuid.UUID) error {
+	_, err := m.db.ExecContext(ctx, `DELETE FROM favorites WHERE list_id = $1 AND account_id = $2`, listID, accountID)
 	return err
 }
 
-func (m *Repository) UnfavoriteRecipe(ctx context.Context, recipeID, accountID uuid.UUID) error {
-	_, err := m.db.ExecContext(ctx, `DELETE FROM favorites WHERE recipe_id = $1 AND account_id = $2`, recipeID, accountID)
-	return err
-}
-
-func (m *Repository) DeleteRecipe(ctx context.Context, id uuid.UUID) (retErr error) {
-	tx, err := m.db.BeginTx(ctx, nil)
+func (m *Repository) DeleteRecipe(ctx context.Context, listID uuid.UUID) (retErr error) {
+	tx, err := m.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
 	}
+	defer Rollback(tx, &retErr)
 
-	defer func() {
-		if retErr == nil {
-			return
-		}
-		if deferErr := tx.Rollback(); deferErr != nil {
-			retErr = errors.Join(retErr, deferErr)
-		}
-	}()
-
-	if _, err := tx.ExecContext(ctx, `DELETE FROM ingredients where recipe_id = $1`, id); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM favorites WHERE list_id = $1`, listID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM recipes WHERE id = $1`, id); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM ingredients where list_id = $1`, listID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM recipes WHERE list_id = $1`, listID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM lists WHERE id = $1`, listID); err != nil {
 		return err
 	}
 	return tx.Commit()
