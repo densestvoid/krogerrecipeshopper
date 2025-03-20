@@ -11,22 +11,22 @@ import (
 	"github.com/densestvoid/krogerrecipeshopper/data"
 )
 
-func Ingredients(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
+func Ingredients(accountID uuid.UUID, list data.List) gomponents.Node {
 	return BasePage("Ingredients", "/", gomponents.Group{
 		html.Div(
 			html.Class("text-center"),
 			html.H3(
-				gomponents.Text(fmt.Sprintf("%s ingredients", recipe.Name)),
+				gomponents.Text(fmt.Sprintf("%s ingredients", list.Name)),
 			),
 			html.Div(
-				htmx.Get(fmt.Sprintf("/recipes/%v/ingredients/table", recipe.ListID)),
+				htmx.Get(fmt.Sprintf("/lists/%v/ingredients/table", list.ID)),
 				htmx.Swap("innerHTML"),
 				htmx.Trigger("load,ingredient-update from:body"),
 			),
-			gomponents.If(accountID == recipe.AccountID, ModalButton(
+			gomponents.If(accountID == list.AccountID, ModalButton(
 				"btn-primary",
 				"Add ingredient",
-				htmx.Get(fmt.Sprintf("/recipes/%v/ingredients//details", recipe.ListID)),
+				htmx.Get(fmt.Sprintf("/lists/%v/ingredients//details", list.ID)),
 			)),
 		),
 	})
@@ -44,7 +44,7 @@ func IngredientDetailsModalContent(listID uuid.UUID, ingredient data.Ingredient)
 	return ModalContent(
 		"Ingredient Details",
 		ModalForm(
-			htmx.Post(fmt.Sprintf("/recipes/%v/ingredients", listID)),
+			htmx.Post(fmt.Sprintf("/lists/%v/ingredients", listID)),
 			ifExists(html.Input(
 				html.Type("hidden"),
 				html.Name("productID"),
@@ -185,13 +185,13 @@ type Ingredient struct {
 	Staple   bool
 }
 
-func IngredientsTable(accountID, recipeAccountID uuid.UUID, ingredients []Ingredient) gomponents.Node {
+func IngredientsTable(accountID, listAccountID uuid.UUID, ingredients []Ingredient) gomponents.Node {
 	var ingredientRows, stapleRows gomponents.Group
 	for _, ingredient := range ingredients {
 		if ingredient.Staple {
-			stapleRows = append(stapleRows, IngredientRow(accountID, recipeAccountID, ingredient))
+			stapleRows = append(stapleRows, IngredientRow(accountID, listAccountID, ingredient))
 		} else {
-			ingredientRows = append(ingredientRows, IngredientRow(accountID, recipeAccountID, ingredient))
+			ingredientRows = append(ingredientRows, IngredientRow(accountID, listAccountID, ingredient))
 		}
 	}
 	return html.Table(
@@ -200,7 +200,7 @@ func IngredientsTable(accountID, recipeAccountID uuid.UUID, ingredients []Ingred
 			html.Tr(
 				html.Th(gomponents.Text("Product")),
 				html.Th(gomponents.Text("Quantity")),
-				gomponents.If(accountID == recipeAccountID, html.Th(gomponents.Text("Actions"))),
+				gomponents.If(accountID == listAccountID, html.Th(gomponents.Text("Actions"))),
 			),
 		),
 		html.TBody(

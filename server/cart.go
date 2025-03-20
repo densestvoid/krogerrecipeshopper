@@ -112,7 +112,7 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 			w.WriteHeader(http.StatusOK)
 		})
 
-		r.Post("/recipe/{listID}", func(w http.ResponseWriter, r *http.Request) {
+		r.Post("/list/{listID}", func(w http.ResponseWriter, r *http.Request) {
 			authCookies, err := GetAuthCookies(r)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusUnauthorized)

@@ -363,7 +363,7 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 		html.Li(
 			html.Class("dropdown-item"),
 			html.A(
-				html.Href(fmt.Sprintf("/recipes/%v/ingredients", recipe.ListID)),
+				html.Href(fmt.Sprintf("/lists/%v/ingredients", recipe.ListID)),
 				html.Button(
 					html.Type("button"),
 					html.Class("btn btn-secondary w-100"),
@@ -411,7 +411,7 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 					html.Type("button"),
 					html.Class("btn btn-primary"),
 					gomponents.Text("Add to cart"),
-					htmx.Post(fmt.Sprintf("/cart/recipe/%v", recipe.ListID)),
+					htmx.Post(fmt.Sprintf("/cart/list/%v", recipe.ListID)),
 					htmx.Swap("none"),
 				),
 				html.Button(

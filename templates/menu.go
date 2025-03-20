@@ -114,6 +114,11 @@ func Menu() gomponents.Node {
 									html.Href("/"),
 									gomponents.Text("Home"),
 								),
+								html.A(
+									html.Class("btn btn-secondary w-100 my-2"),
+									html.Href("/lists"),
+									gomponents.Text("Lists"),
+								),
 								html.Div(
 									html.Class("dropdown"),
 									html.Button(

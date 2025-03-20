@@ -152,7 +152,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 			}
 			w.WriteHeader(http.StatusOK)
 		})
-		r.Route("/{listID}", func(r chi.Router) {
+		r.Route("/{id}", func(r chi.Router) {
 			r.Get("/details", func(w http.ResponseWriter, r *http.Request) {
 				authCookies, err := GetAuthCookies(r)
 				if err != nil {
@@ -161,7 +161,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 				}
 
 				var recipe data.Recipe
-				if listID, err := uuid.Parse(chi.URLParam(r, "listID")); err == nil {
+				if listID, err := uuid.Parse(chi.URLParam(r, "id")); err == nil {
 					recipe, err = repo.GetRecipe(r.Context(), listID, authCookies.AccountID)
 					if err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -184,7 +184,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 				}
 
 				var recipe data.Recipe
-				if listID, err := uuid.Parse(chi.URLParam(r, "listID")); err == nil {
+				if listID, err := uuid.Parse(chi.URLParam(r, "id")); err == nil {
 					recipe, err = repo.GetRecipe(r.Context(), listID, authCookies.AccountID)
 					if err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -272,7 +272,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					http.Error(w, err.Error(), http.StatusUnauthorized)
 					return
 				}
-				listID := uuid.Must(uuid.Parse(chi.URLParam(r, "listID")))
+				listID := uuid.Must(uuid.Parse(chi.URLParam(r, "id")))
 
 				recipe, err := repo.GetRecipe(r.Context(), listID, authCookies.AccountID)
 				if err != nil {
@@ -299,7 +299,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					return
 				}
 
-				listID := uuid.Must(uuid.Parse(chi.URLParam(r, "listID")))
+				listID := uuid.Must(uuid.Parse(chi.URLParam(r, "id")))
 
 				if err := repo.FavoriteRecipe(r.Context(), listID, authCookies.AccountID); err != nil {
 					http.Error(w, fmt.Sprintf("adding favorite recipe: %v", err), http.StatusInternalServerError)
@@ -320,7 +320,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					return
 				}
 
-				listID := uuid.Must(uuid.Parse(chi.URLParam(r, "listID")))
+				listID := uuid.Must(uuid.Parse(chi.URLParam(r, "id")))
 
 				if err := repo.UnfavoriteRecipe(r.Context(), listID, authCookies.AccountID); err != nil {
 					http.Error(w, fmt.Sprintf("removing favorite recipe: %v", err), http.StatusInternalServerError)
@@ -333,8 +333,6 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 				}
 				w.WriteHeader(http.StatusOK)
 			})
-
-			r.Route("/ingredients", NewIngredientMux(config, repo, cache))
 		})
 	}
 }

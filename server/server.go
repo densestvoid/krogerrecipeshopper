@@ -70,6 +70,7 @@ func New(ctx context.Context, logger *slog.Logger, config Config, repo *data.Rep
 		})
 		r.Route("/accounts", NewAccountMux(config, repo, cache))
 		r.Route("/profiles", NewProfilesMux(repo))
+		r.Route("/lists", NewListsMux(config, repo, cache))
 		r.Route("/recipes", NewRecipesMux(config, repo, cache))
 		r.Route("/products", NewProductsMux(config, repo, cache))
 		r.Route("/locations", NewLocationsMux(config))
