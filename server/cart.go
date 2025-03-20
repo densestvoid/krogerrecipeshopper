@@ -164,6 +164,47 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 			w.WriteHeader(http.StatusOK)
 		})
 
+		r.Route("/quickadd", func(r chi.Router) {
+			// Quick add a product to the cart
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				if err := templates.CartQuickAddModalContent().Render(w); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+			})
+
+			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+				authCookies, err := GetAuthCookies(r)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusUnauthorized)
+					return
+				}
+
+				if err := r.ParseForm(); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				productID := r.FormValue("productID")
+
+				quantityFloat, err := strconv.ParseFloat(r.FormValue("quantity"), 64)
+				if err != nil || quantityFloat <= 0 {
+					http.Error(w, fmt.Sprintf("invalid quantity: %v", err), http.StatusBadRequest)
+					return
+				}
+				quantityPercent := int(quantityFloat * 100)
+
+				if err := repo.AddCartProduct(r.Context(), authCookies.AccountID, productID, quantityPercent, false); err != nil {
+					http.Error(w, fmt.Sprintf("adding cart product: %v", err), http.StatusInternalServerError)
+					return
+				}
+
+				w.Header().Add("HX-Trigger", "cart-update")
+				w.WriteHeader(http.StatusOK)
+			})
+		})
+
 		r.Route("/{productID}", func(r chi.Router) {
 			// Get cart product details
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {

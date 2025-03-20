@@ -19,6 +19,11 @@ func Cart() gomponents.Node {
 			html.H3(
 				gomponents.Text("Cart"),
 			),
+			ModalButton(
+				"btn btn-primary",
+				"Quick add",
+				htmx.Get("/cart/quickadd"),
+			),
 			html.Div(
 				htmx.Get("/cart/table"),
 				htmx.Swap("innerHTML"),
@@ -57,6 +62,30 @@ func Cart() gomponents.Node {
 			),
 		),
 	})
+}
+
+func CartQuickAddModalContent() gomponents.Node {
+	return ModalContent(
+		"Quick add product",
+		ModalForm(
+			htmx.Post("/cart/quickadd"),
+			ProductsSearch(),
+			FormInput("ingredient-quantity", "Ingredient quantity", nil,
+				html.Input(
+					html.Class("form-control"),
+					html.Type("number"),
+					html.Name("quantity"),
+					html.Min("0.01"),
+					html.Step("0.01"),
+					html.Required(),
+				),
+			),
+		),
+		gomponents.Group{
+			ModalDismiss(),
+			ModalSubmit(),
+		},
+	)
 }
 
 func CartProductDetailsModalContent(cartProduct data.CartProduct) gomponents.Node {
