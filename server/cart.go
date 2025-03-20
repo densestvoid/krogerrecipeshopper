@@ -188,13 +188,12 @@ func NewCartMux(config Config, repo *data.Repository, cache *data.Cache) func(ch
 
 				productID := r.FormValue("productID")
 
-				quantityPercent := 100
 				quantityFloat, err := strconv.ParseFloat(r.FormValue("quantity"), 64)
 				if err != nil || quantityFloat <= 0 {
 					http.Error(w, fmt.Sprintf("invalid quantity: %v", err), http.StatusBadRequest)
 					return
 				}
-				quantityPercent = int(quantityFloat * 100)
+				quantityPercent := int(quantityFloat * 100)
 
 				if err := repo.AddCartProduct(r.Context(), authCookies.AccountID, productID, quantityPercent, false); err != nil {
 					http.Error(w, fmt.Sprintf("adding cart product: %v", err), http.StatusInternalServerError)

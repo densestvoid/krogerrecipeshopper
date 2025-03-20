@@ -68,7 +68,7 @@ func CartQuickAddModalContent() gomponents.Node {
 	return ModalContent(
 		"Quick add product",
 		ModalForm(
-			htmx.Post(fmt.Sprintf("/cart/quickadd")),
+			htmx.Post("/cart/quickadd"),
 			ProductsSearch(),
 			FormInput("ingredient-quantity", "Ingredient quantity", nil,
 				html.Input(
