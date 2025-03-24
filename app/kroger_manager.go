@@ -23,6 +23,8 @@ func NewKrogerManager(productsClient *kroger.ProductsClient, locationsClient *kr
 	}
 }
 
+const MaxProductIds = 50
+
 func (m *KrogerManager) GetProducts(ctx context.Context, locationID *string, productIDs ...string) (map[string]data.CacheProduct, error) {
 	// Get products from cache
 	cachedProdcuts, productIDMisses, err := m.cache.RetrieveKrogerProduct(ctx, productIDs...)
@@ -32,23 +34,25 @@ func (m *KrogerManager) GetProducts(ctx context.Context, locationID *string, pro
 
 	var clientProducts []data.CacheProduct
 	if len(productIDMisses) > 0 {
-		// Get missing products from client
-		productsResp, err := m.productsClient.GetProducts(ctx, kroger.GetProductsRequest{
-			Filters: &kroger.GetProductsByIDsFilter{
-				ProductIDs: productIDMisses,
-			},
-			LocationID: locationID,
-		})
-		if err != nil {
-			return nil, err
-		}
-		for _, product := range productsResp.Products {
-			clientProducts = append(clientProducts, KrogerProductToCacheProduct(product))
-		}
+		for productIDMissesChunk := range slices.Chunk(productIDMisses, MaxProductIds) {
+			// Get missing products from client
+			productsResp, err := m.productsClient.GetProducts(ctx, kroger.GetProductsRequest{
+				Filters: &kroger.GetProductsByIDsFilter{
+					ProductIDs: productIDMissesChunk,
+				},
+				LocationID: locationID,
+			})
+			if err != nil {
+				return nil, err
+			}
+			for _, product := range productsResp.Products {
+				clientProducts = append(clientProducts, KrogerProductToCacheProduct(product))
+			}
 
-		// Store products in cache
-		if err := m.cache.StoreKrogerProduct(ctx, clientProducts...); err != nil {
-			return nil, err
+			// Store products in cache
+			if err := m.cache.StoreKrogerProduct(ctx, clientProducts...); err != nil {
+				return nil, err
+			}
 		}
 	}
 
