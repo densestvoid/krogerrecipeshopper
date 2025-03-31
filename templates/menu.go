@@ -151,6 +151,15 @@ func Menu() gomponents.Node {
 								html.A(html.Class("btn btn-secondary w-100 my-2"), html.Href("/accounts"), gomponents.Text("Account")),
 								// html.A(html.Class("btn btn-warning w-100 my-2"), html.Href("/users"), gomponents.Text("Admin")),
 								html.Button(html.Class("btn btn-danger w-100 my-2"), htmx.Post("/auth/logout"), htmx.Swap("none"), gomponents.Text("Logout")),
+								// Ko-fi donations
+								html.A(html.Class("btn btn-success w-100 my-2"), html.Href("https://ko-fi.com/J3J11COBMW"), html.Target("_blank"),
+									html.Img(
+										html.Src("https://storage.ko-fi.com/cdn/cup-border.png"),
+										html.Alt("Donate at ko-fi.com"),
+										html.Height("20"),
+									),
+									gomponents.Text(" Donate"),
+								),
 							),
 						),
 					),
