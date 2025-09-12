@@ -5,11 +5,7 @@ name: Integration
 
 on:
   pull_request:
-    branches: [ "main" ]
 
 jobs:
   go-checks:
     uses: densestvoid/workflows/.github/workflows/go-checks.yml@main
-    with:
-      go-version: 'stable'
-      working-directory: '.'
