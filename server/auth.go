@@ -162,7 +162,7 @@ func AuthenticationMiddleware(config Config, repo *data.Repository) func(next ht
 					}
 					session, err := repo.GetSessionByID(r.Context(), sessionID)
 					if err != nil {
-						RedirectToLogin(w, r, loginRedirectURL, fmt.Errorf("Unable to create session: %w", err))
+						RedirectToLogin(w, r, loginRedirectURL, fmt.Errorf("unable to create session: %w", err))
 						return
 					}
 					accountID = session.AccountID
@@ -170,18 +170,18 @@ func AuthenticationMiddleware(config Config, repo *data.Repository) func(next ht
 					identityClient := kroger.NewIdentityClient(http.DefaultClient, kroger.PublicEnvironment, accessToken)
 					profileResp, err := identityClient.GetProfile(r.Context())
 					if err != nil {
-						RedirectToLogin(w, r, loginRedirectURL, fmt.Errorf("Unable to get kroger profile id: %w", err))
+						RedirectToLogin(w, r, loginRedirectURL, fmt.Errorf("unable to get kroger profile id: %w", err))
 						return
 					}
 					account, err := repo.GetAccountByKrogerProfileID(r.Context(), profileResp.Profile.ID)
 					// Refrsh token exists, the user has logged in before and should have an account already
 					if err != nil {
-						RedirectToLogin(w, r, loginRedirectURL, fmt.Errorf("Unable to get account: %w", err))
+						RedirectToLogin(w, r, loginRedirectURL, fmt.Errorf("unable to get account: %w", err))
 						return
 					}
 					session, err := repo.CreateSession(r.Context(), account.ID)
 					if err != nil {
-						RedirectToLogin(w, r, loginRedirectURL, fmt.Errorf("Unable to create session: %w", err))
+						RedirectToLogin(w, r, loginRedirectURL, fmt.Errorf("unable to create session: %w", err))
 						return
 					}
 					sessionID = session.ID
