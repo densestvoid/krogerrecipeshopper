@@ -8,4 +8,4 @@ on:
 
 jobs:
   go-checks:
-    uses: densestvoid/workflows/go-checks.yml@main
+    uses: densestvoid/workflows/workflows/go-checks.yml@main
