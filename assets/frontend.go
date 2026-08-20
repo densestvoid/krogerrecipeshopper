@@ -2,9 +2,8 @@ package assets
 
 import (
 	_ "embed"
-	"fmt"
-
 	"encoding/json/v2"
+	"fmt"
 )
 
 //go:embed package.json
