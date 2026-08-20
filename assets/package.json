@@ -1,7 +1,6 @@
 {
   "private": true,
   "dependencies": {
-    "alpinejs": "3.14.9",
     "bootstrap": "5.3.3",
     "bootstrap-icons": "1.11.3",
     "htmx-ext-remove-me": "2.0.0",

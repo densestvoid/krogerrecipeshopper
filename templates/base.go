@@ -1,10 +1,11 @@
 package templates
 
 import (
-	"github.com/densestvoid/krogerrecipeshopper/assets"
 	"maragu.dev/gomponents"
 	htmx "maragu.dev/gomponents-htmx"
 	"maragu.dev/gomponents/html"
+
+	"github.com/densestvoid/krogerrecipeshopper/assets"
 )
 
 func BasePage(title, baseURL string, bodyNodes gomponents.Group) gomponents.Node {
