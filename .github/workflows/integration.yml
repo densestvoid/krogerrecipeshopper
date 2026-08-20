@@ -1,5 +1,6 @@
-# Integration workflow that uses the reusable Go Checks workflow
-# The actual workflow logic is maintained in the workflows repository
+# Go quality checks for pull requests.
+# Self-contained mirror of Taskfile ci; densestvoid/workflows go-checks.yml@main
+# currently references actions that fail when invoked from consumer repos.
 
 name: Integration
 
@@ -8,4 +9,27 @@ on:
 
 jobs:
   go-checks:
-    uses: densestvoid/workflows/.github/workflows/go-checks.yml@main
+    name: go-checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Static analysis
+        run: go tool staticcheck ./...
+
+      - name: Lint
+        run: go tool golangci-lint run ./...
+
+      - name: Vulnerability check
+        run: go tool govulncheck ./...
+
+      - name: Security check
+        run: go tool gosec ./...
