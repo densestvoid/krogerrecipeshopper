@@ -27,6 +27,28 @@ func init() {
 		panic(fmt.Sprintf("assets: parse package.json: %v", err))
 	}
 	frontend = manifest.Dependencies
+	if err := frontend.validate(); err != nil {
+		panic(fmt.Sprintf("assets: invalid package.json: %v", err))
+	}
+}
+
+func (d frontendDependencies) validate() error {
+	if d.Alpinejs == "" {
+		return fmt.Errorf("missing alpinejs")
+	}
+	if d.Bootstrap == "" {
+		return fmt.Errorf("missing bootstrap")
+	}
+	if d.BootstrapIcons == "" {
+		return fmt.Errorf("missing bootstrap-icons")
+	}
+	if d.HTMXOrg == "" {
+		return fmt.Errorf("missing htmx.org")
+	}
+	if d.HTMXExtRemoveMe == "" {
+		return fmt.Errorf("missing htmx-ext-remove-me")
+	}
+	return nil
 }
 
 func BootstrapCSS() string {
