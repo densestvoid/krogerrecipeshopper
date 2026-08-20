@@ -1,0 +1,57 @@
+# CI workflow — orchestrates Go quality checks via the densestvoid/workflows toolbox.
+# Skip logic and the required aggregation job live in this repo; check implementations
+# are maintained in densestvoid/workflows.
+
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.filter.outputs.go }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            go:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+
+  go-checks:
+    name: Run Go Checks
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
+    uses: densestvoid/workflows/.github/workflows/go-checks.yml@main
+
+  # Single required check for branch protection; succeeds when checks pass or are skipped.
+  ci:
+    name: CI
+    needs: [changes, go-checks]
+    if: >-
+      always() &&
+      needs.changes.result == 'success' &&
+      (needs.go-checks.result == 'success' || needs.go-checks.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report result
+        run: |
+          if [ "${{ needs.changes.outputs.go }}" = "true" ]; then
+            echo "Go sources changed — go-checks ran"
+          else
+            echo "Go sources unchanged — skipped go-checks"
+          fi
+          echo "All checks passed"
