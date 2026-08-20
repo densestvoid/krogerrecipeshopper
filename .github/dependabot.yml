@@ -7,9 +7,14 @@ updates:
       interval: weekly
       day: monday
     groups:
+      workflows-toolbox:
+        patterns:
+          - "densestvoid/workflows*"
       github-actions:
         patterns:
           - "*"
+        exclude-patterns:
+          - "densestvoid/workflows*"
 
   - package-ecosystem: gomod
     directory: /
@@ -17,6 +22,6 @@ updates:
       interval: weekly
       day: monday
     groups:
-      gomod:
+      gomod-root:
         patterns:
           - "*"
