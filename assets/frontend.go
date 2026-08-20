@@ -2,7 +2,7 @@ package assets
 
 import (
 	_ "embed"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 )
 
