@@ -35,3 +35,7 @@ cmd/kroger-recipes/kroger-recipes
 # Debugging
 **__debug_*
 **/tmp
+
+# npm (assets/package.json manifest only; no committed node_modules)
+node_modules/
+assets/node_modules/

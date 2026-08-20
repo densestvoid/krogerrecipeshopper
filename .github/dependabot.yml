@@ -25,3 +25,13 @@ updates:
       gomod-root:
         patterns:
           - "*"
+
+  - package-ecosystem: npm
+    directory: /assets
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      npm-frontend:
+        patterns:
+          - "*"
