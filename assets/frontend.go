@@ -2,18 +2,16 @@ package assets
 
 import (
 	_ "embed"
-	"encoding/json"
 	"fmt"
+
+	"encoding/json/v2"
 )
 
 //go:embed package.json
 var packageJSON []byte
 
-type packageManifest struct {
-	Dependencies frontendDependencies `json:"dependencies"`
-}
-
 type frontendDependencies struct {
+	Alpinejs        string `json:"alpinejs"`
 	Bootstrap       string `json:"bootstrap"`
 	BootstrapIcons  string `json:"bootstrap-icons"`
 	HTMXOrg         string `json:"htmx.org"`
@@ -23,30 +21,13 @@ type frontendDependencies struct {
 var frontend frontendDependencies
 
 func init() {
-	var manifest packageManifest
+	var manifest struct {
+		Dependencies frontendDependencies `json:"dependencies"`
+	}
 	if err := json.Unmarshal(packageJSON, &manifest); err != nil {
 		panic(fmt.Sprintf("assets: parse package.json: %v", err))
 	}
 	frontend = manifest.Dependencies
-	if err := frontend.validate(); err != nil {
-		panic(fmt.Sprintf("assets: invalid package.json: %v", err))
-	}
-}
-
-func (d frontendDependencies) validate() error {
-	if d.Bootstrap == "" {
-		return fmt.Errorf("missing bootstrap")
-	}
-	if d.BootstrapIcons == "" {
-		return fmt.Errorf("missing bootstrap-icons")
-	}
-	if d.HTMXOrg == "" {
-		return fmt.Errorf("missing htmx.org")
-	}
-	if d.HTMXExtRemoveMe == "" {
-		return fmt.Errorf("missing htmx-ext-remove-me")
-	}
-	return nil
 }
 
 func BootstrapCSS() string {
@@ -69,7 +50,6 @@ func HTMXRemoveMe() string {
 	return fmt.Sprintf("https://unpkg.com/htmx-ext-remove-me@%s/remove-me.js", frontend.HTMXExtRemoveMe)
 }
 
-// AlpineJS was previously unpinned on unpkg; not in package.json until Dependabot adds it.
 func AlpineJS() string {
-	return "https://unpkg.com/alpinejs"
+	return fmt.Sprintf("https://unpkg.com/alpinejs@%s/dist/cdn.min.js", frontend.Alpinejs)
 }
