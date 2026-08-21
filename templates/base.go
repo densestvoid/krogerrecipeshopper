@@ -4,6 +4,8 @@ import (
 	"maragu.dev/gomponents"
 	htmx "maragu.dev/gomponents-htmx"
 	"maragu.dev/gomponents/html"
+
+	"github.com/densestvoid/krogerrecipeshopper/assets"
 )
 
 func BasePage(title, baseURL string, bodyNodes gomponents.Group) gomponents.Node {
@@ -48,15 +50,14 @@ func baseHead(title, baseURL string) gomponents.Node {
 
 		// Bootstrap CSS
 		html.Link(
-			html.Href("https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"),
+			html.Href(assets.BootstrapCSS()),
 			html.Rel("stylesheet"),
-			html.Integrity("sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"),
 			html.CrossOrigin("anonymous"),
 		),
 
 		// Bootstrap Icons
 		html.Link(
-			html.Href("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"),
+			html.Href(assets.BootstrapIconsCSS()),
 			html.Rel("stylesheet"),
 		),
 
@@ -103,19 +104,18 @@ func baseBody(bodyNodes gomponents.Node) gomponents.Node {
 
 		// Bootstrap JS
 		html.Script(
-			html.Src("https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"),
-			html.Integrity("sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"),
+			html.Src(assets.BootstrapJS()),
 			html.CrossOrigin("anonymous"),
 		),
 
 		// Alpine JS
 		html.Script(
-			html.Src("https://unpkg.com/alpinejs"),
+			html.Src(assets.AlpineJS()),
 			html.Defer(),
 		),
 
 		// HTMX
-		html.Script(html.Src("https://unpkg.com/htmx.org@2.0.4")),
-		html.Script(html.Src("https://unpkg.com/htmx-ext-remove-me@2.0.0/remove-me.js")), // Auto remove elements (alerts)
+		html.Script(html.Src(assets.HTMX())),
+		html.Script(html.Src(assets.HTMXRemoveMe())), // Auto remove elements (alerts)
 	)
 }
