@@ -1,15 +1,14 @@
-# CI workflow — orchestrates Go quality checks via the densestvoid/workflows toolbox.
-# Skip logic and the required aggregation job live in this repo; check implementations
-# are maintained in densestvoid/workflows.
+# Branch protection: require job ci.
+#
+# Follows densestvoid/workflows ci-playbooks: path filters, conditional check jobs,
+# and an alls-green aggregate gate. Check implementations live in the toolbox repo.
 
 name: CI
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   changes:
@@ -17,12 +16,13 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       go: ${{ steps.filter.outputs.go }}
+      workflows: ${{ steps.filter.outputs.workflows }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4.0.3
         id: filter
         with:
           filters: |
@@ -30,6 +30,17 @@ jobs:
               - '**/*.go'
               - 'go.mod'
               - 'go.sum'
+            workflows:
+              - '.github/workflows/**'
+              - '.github/actions/**'
+
+  actionlint:
+    name: Lint workflows
+    needs: changes
+    if: needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: densestvoid/workflows/.github/actions/actionlint@main
 
   go-checks:
     name: Run Go Checks
@@ -37,21 +48,13 @@ jobs:
     if: needs.changes.outputs.go == 'true'
     uses: densestvoid/workflows/.github/workflows/go-checks.yml@main
 
-  # Single required check for branch protection; succeeds when checks pass or are skipped.
   ci:
     name: CI
-    needs: [changes, go-checks]
-    if: >-
-      always() &&
-      needs.changes.result == 'success' &&
-      (needs.go-checks.result == 'success' || needs.go-checks.result == 'skipped')
+    needs: [changes, actionlint, go-checks]
+    if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Report result
-        run: |
-          if [ "${{ needs.changes.outputs.go }}" = "true" ]; then
-            echo "Go sources changed — go-checks ran"
-          else
-            echo "Go sources unchanged — skipped go-checks"
-          fi
-          echo "All checks passed"
+      - uses: re-actors/alls-green@v1.2.2
+        with:
+          jobs: ${{ toJSON(needs) }}
+          allowed-skips: actionlint, go-checks
