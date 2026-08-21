@@ -24,7 +24,10 @@ type Config struct {
 func New(ctx context.Context, logger *slog.Logger, config Config, repo *data.Repository, cache *data.Cache) http.Handler {
 	mux := chi.NewRouter()
 	mux.Use(
-		httprate.LimitByIP(100, time.Minute),
+		middleware.ClientIPFromRemoteAddr,
+		httprate.LimitBy(100, time.Minute, func(r *http.Request) (string, error) {
+			return httprate.CanonicalizeIP(middleware.GetClientIP(r.Context())), nil
+		}),
 		NewErrorStatusMiddleware(),
 		NewSlogMiddleware(),
 	)
