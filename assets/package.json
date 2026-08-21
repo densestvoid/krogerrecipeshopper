@@ -1,10 +1,10 @@
 {
   "private": true,
   "dependencies": {
-    "alpinejs": "3.14.9",
-    "bootstrap": "5.3.3",
-    "bootstrap-icons": "1.11.3",
-    "htmx-ext-remove-me": "2.0.0",
-    "htmx.org": "2.0.4"
+    "alpinejs": "3.16.2",
+    "bootstrap": "5.3.8",
+    "bootstrap-icons": "1.13.1",
+    "htmx-ext-remove-me": "2.0.2",
+    "htmx.org": "2.0.10"
   }
 }
