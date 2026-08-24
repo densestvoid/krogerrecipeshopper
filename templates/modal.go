@@ -17,6 +17,7 @@ func Modal() gomponents.Node {
 			html.Div(
 				html.ID("modal-content"),
 				html.Class("modal-content"),
+				gomponents.Attr("hx-on::htmx:after-swap", "Alpine.initTree(event.detail.target)"),
 			),
 		),
 	)

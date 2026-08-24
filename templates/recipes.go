@@ -12,6 +12,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const recipeSearchTrigger = "load,change delay:500ms,input changed delay:500ms,recipe-update from:body,tag-search from:body"
+
 func Recipes(accountID uuid.UUID) gomponents.Node {
 	return BasePage("Recipes", "/", gomponents.Group{
 		html.Div(
@@ -77,11 +79,12 @@ func Recipes(accountID uuid.UUID) gomponents.Node {
 						),
 					),
 				),
+				TagSelect(),
 				htmx.Post("/recipes/search"),
 				htmx.Target("#recipe-table"),
 				htmx.Swap("innerHTML"),
 				htmx.Vals(fmt.Sprintf(`{"accountID": "%s"}`, accountID)),
-				htmx.Trigger("load,change delay:500ms,input changed delay:500ms,recipe-update from:body"),
+				htmx.Trigger(recipeSearchTrigger),
 			),
 			html.Div(html.ID("recipe-table")),
 			ModalButton(
@@ -121,6 +124,7 @@ func FavoriteRecipes() gomponents.Node {
 						html.Class("form-control"),
 					),
 				),
+				TagSelect(),
 				htmx.Post("/recipes/search"),
 				htmx.Target("#recipe-table"),
 				htmx.Swap("innerHTML"),
@@ -128,7 +132,7 @@ func FavoriteRecipes() gomponents.Node {
 					"favorites": true,
 					"visibility": ["%s", "%s", "%s"]
 				}`, data.VisibilityPublic, data.VisibilityFriends, data.VisibilityPrivate)),
-				htmx.Trigger("load,change delay:500ms,input changed delay:500ms,recipe-update from:body"),
+				htmx.Trigger(recipeSearchTrigger),
 			),
 			html.Div(html.ID("recipe-table")),
 		),
@@ -142,21 +146,29 @@ func ExploreRecipes() gomponents.Node {
 			html.H3(
 				gomponents.Text("Explore"),
 			),
-			html.Div(
+			html.Form(
+				html.ID("recipe-filters"),
+				html.Class("card card-body"),
 				html.H3(gomponents.Text("Search recipes")),
-				html.Input(
-					html.Class("form-control"),
-					html.Type("search"),
-					html.Name("name"),
-					html.Placeholder("Begin typing to seach recipes"),
-					htmx.Post("/recipes/search"),
-					htmx.Trigger("input changed delay:500ms, keyup[key=='Enter']"),
-					htmx.Target("#recipes-search-table"),
-					htmx.Vals(fmt.Sprintf(`{
-						"visibility": ["%s", "%s", "%s"]
-					}`, data.VisibilityPublic, data.VisibilityFriends, data.VisibilityPrivate)),
-					htmx.Indicator(".htmx-indicator"),
+				FormInput(
+					"recipe-name",
+					"Name",
+					nil,
+					html.Input(
+						html.Class("form-control"),
+						html.Type("search"),
+						html.Name("name"),
+						html.Placeholder("Begin typing to seach recipes"),
+					),
 				),
+				TagSelect(),
+				htmx.Post("/recipes/search"),
+				htmx.Trigger(recipeSearchTrigger),
+				htmx.Target("#recipes-search-table"),
+				htmx.Vals(fmt.Sprintf(`{
+					"visibility": ["%s", "%s", "%s"]
+				}`, data.VisibilityPublic, data.VisibilityFriends, data.VisibilityPrivate)),
+				htmx.Indicator(".htmx-indicator"),
 				html.Span(html.Class("htmx-indicator"), gomponents.Text("Searching...")),
 				html.Div(html.ID("recipes-search-table")),
 			),
@@ -185,6 +197,12 @@ func RecipeDetailsView(recipe data.Recipe) gomponents.Node {
 		html.Class("text-center"),
 		html.H2(gomponents.Text(recipe.Name)),
 		html.P(gomponents.Text(recipe.Description)),
+		gomponents.If(len(recipe.Tags) > 0,
+			html.Div(
+				html.Class("mb-2"),
+				TagBadges(recipe.Tags),
+			),
+		),
 		gomponents.If(recipe.InstructionType != data.InstructionTypeNone,
 			html.Div(
 				gomponents.Iff(recipe.InstructionType == data.InstructionTypeText, func() gomponents.Node {
@@ -219,6 +237,11 @@ func RecipeDetailsEdit(recipe data.Recipe, copy bool) gomponents.Node {
 		return gomponents.If(recipe.ListID != uuid.Nil, node)
 	}
 
+	tags := gomponents.Group{}
+	for _, tag := range recipe.Tags {
+		tags = append(tags, Tag(tag))
+	}
+
 	return ModalForm(
 		gomponents.If(!copy, htmx.Post("/recipes")),
 		gomponents.If(copy, htmx.Post(fmt.Sprintf("/recipes/%s/copy", recipe.ListID))),
@@ -242,6 +265,7 @@ func RecipeDetailsEdit(recipe data.Recipe, copy bool) gomponents.Node {
 			html.Name("description"),
 			ifExists(html.Value(recipe.Description)),
 		)),
+		RecipeTagEditor(tags),
 		Select("recipeVisibility", "Visibility", "visibility", recipe.Visibility, []string{
 			data.VisibilityPublic,
 			data.VisibilityFriends,
@@ -340,6 +364,10 @@ func RecipeTable(accountID uuid.UUID, recipes []data.Recipe) gomponents.Node {
 					html.Class("d-none d-sm-table-cell"),
 					gomponents.Text("Description"),
 				),
+				html.Th(
+					html.Class("d-none d-md-table-cell"),
+					gomponents.Text("Tags"),
+				),
 				html.Th(gomponents.Text("Actions")),
 			),
 		),
@@ -404,6 +432,10 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 			// Hide if the screen is small
 			html.Class("d-none d-sm-table-cell"),
 			gomponents.Text(recipe.Description)),
+		html.Td(
+			html.Class("d-none d-md-table-cell"),
+			TagBadges(recipe.Tags),
+		),
 		html.Td(
 			html.Div(
 				html.Class("btn-group dropdown-center"),

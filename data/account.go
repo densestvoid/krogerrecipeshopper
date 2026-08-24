@@ -87,6 +87,15 @@ func (r *Repository) DeleteAccount(ctx context.Context, id uuid.UUID) (retErr er
 		return err
 	}
 
+	// Clear recipe tags
+	if _, err := tx.ExecContext(ctx, `DELETE FROM recipe_tags USING recipe_list_view AS recipes WHERE recipe_tags.recipe_list_id = recipes.list_id AND recipes.account_id = $1`, id); err != nil {
+		return err
+	}
+
+	if err := r.deleteOrphanTags(ctx, tx); err != nil {
+		return err
+	}
+
 	// Clear recipes
 	if _, err := tx.ExecContext(ctx, `DELETE FROM recipes USING lists WHERE lists.id = recipes.list_id AND lists.account_id = $1`, id); err != nil {
 		return err
