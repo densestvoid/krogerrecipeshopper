@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 const (
@@ -38,7 +39,33 @@ type Recipe struct {
 	Instructions    string    `db:"instructions"`
 	Visibility      string    `db:"visibility"`
 	Favorite        bool      `db:"favorite"`
-	Tags            []string  `db:"tags"`
+	Tags            []string
+}
+
+type listRecipe struct {
+	ListID          uuid.UUID      `db:"list_id"`
+	AccountID       uuid.UUID      `db:"account_id"`
+	Name            string         `db:"name"`
+	Description     string         `db:"description"`
+	InstructionType string         `db:"instruction_type"`
+	Instructions    string         `db:"instructions"`
+	Visibility      string         `db:"visibility"`
+	Favorite        bool           `db:"favorite"`
+	Tags            pq.StringArray `db:"tags"`
+}
+
+func (r listRecipe) recipe() Recipe {
+	return Recipe{
+		ListID:          r.ListID,
+		AccountID:       r.AccountID,
+		Name:            r.Name,
+		Description:     r.Description,
+		InstructionType: r.InstructionType,
+		Instructions:    r.Instructions,
+		Visibility:      r.Visibility,
+		Favorite:        r.Favorite,
+		Tags:            []string(r.Tags),
+	}
 }
 
 func (r *Repository) GetRecipe(ctx context.Context, listID uuid.UUID, accountID uuid.UUID) (Recipe, error) {
@@ -57,11 +84,15 @@ func (r *Repository) GetRecipe(ctx context.Context, listID uuid.UUID, accountID 
 	}
 	defer namedQuery.Close()
 
-	var recipe Recipe
-	return recipe, namedQuery.GetContext(ctx, &recipe, map[string]any{
+	var row listRecipe
+	if err := namedQuery.GetContext(ctx, &row, map[string]any{
 		"listID":    listID,
 		"accountID": accountID,
-	})
+	}); err != nil {
+		return Recipe{}, err
+	}
+
+	return row.recipe(), nil
 }
 
 type ListRecipesFilter interface {
@@ -156,8 +187,16 @@ func (r *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filte
 	}
 	defer namedQuery.Close()
 
-	var recipes []Recipe
-	return recipes, namedQuery.Select(&recipes, namedArgs)
+	var rows []listRecipe
+	if err := namedQuery.Select(&rows, namedArgs); err != nil {
+		return nil, err
+	}
+
+	recipes := make([]Recipe, len(rows))
+	for i, row := range rows {
+		recipes[i] = row.recipe()
+	}
+	return recipes, nil
 }
 
 func (r *Repository) CreateRecipe(ctx context.Context, accountID uuid.UUID, name, description, instructionType, instructions, visibility string, tags []string) (listID uuid.UUID, retErr error) {
