@@ -4,17 +4,49 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/densestvoid/krogerrecipeshopper/data"
 	"maragu.dev/gomponents"
 	htmx "maragu.dev/gomponents-htmx"
 	"maragu.dev/gomponents/html"
 )
 
+const maxTagNameLength = 32
+
+func tagDropdownHeader(title string) gomponents.Node {
+	return html.Li(
+		html.Class("dropdown-header"),
+		html.H6(
+			gomponents.Text(title),
+		),
+	)
+}
+
+func tagDropdownDivider() gomponents.Node {
+	return html.Li(
+		html.Class("dropdown-item"),
+		html.Hr(
+			html.Class("dropdown-divider"),
+		),
+	)
+}
+
+func tagDropdownList(id string, header string) gomponents.Node {
+	return gomponents.Group{
+		tagDropdownHeader(header),
+		html.Li(
+			html.Class("px-3"),
+			html.Ul(
+				html.ID(id),
+				html.Class("list-unstyled mb-0"),
+			),
+		),
+	}
+}
+
 func TagSelect() gomponents.Node {
 	return html.Div(
 		html.ID("tag-search-dropdown"),
 		html.Class("dropdown"),
-		gomponents.Attr("x-data", fmt.Sprintf("{ maxTagLen: %d }", data.MaxTagNameLength)),
+		gomponents.Attr("x-data", fmt.Sprintf("{ maxTagLen: %d }", maxTagNameLength)),
 		gomponents.Attr("@click.stop", `
 			const searchItem = $event.target.closest('[data-tag-search-item]');
 			if (searchItem) {
@@ -45,12 +77,7 @@ func TagSelect() gomponents.Node {
 		),
 		html.Ul(
 			html.Class("dropdown-menu"),
-			html.Li(
-				html.Class("dropdown-header"),
-				html.H6(
-					gomponents.Text("Search"),
-				),
-			),
+			tagDropdownHeader("Search"),
 			html.Li(
 				html.Class("dropdown-item"),
 				FormInput(
@@ -62,7 +89,7 @@ func TagSelect() gomponents.Node {
 						html.Class("form-control"),
 						html.Type("text"),
 						html.Name("search"),
-						gomponents.Attr("maxlength", fmt.Sprintf("%d", data.MaxTagNameLength)),
+						gomponents.Attr("maxlength", fmt.Sprintf("%d", maxTagNameLength)),
 						htmx.Get("/recipes/tags"),
 						htmx.Target("#searched-tags"),
 						htmx.Swap("innerHTML"),
@@ -72,48 +99,14 @@ func TagSelect() gomponents.Node {
 					),
 				),
 			),
-			html.Li(
-				html.Class("dropdown-item"),
-				html.Hr(
-					html.Class("dropdown-divider"),
-				),
-			),
+			tagDropdownDivider(),
 			html.Template(
 				html.ID("selected-tag-template"),
 				TagListSelectItem(),
 			),
-			html.Li(
-				html.Class("dropdown-header"),
-				html.H6(
-					gomponents.Text("Selected"),
-				),
-			),
-			html.Li(
-				html.Class("px-3"),
-				html.Ul(
-					html.ID("selected-tags"),
-					html.Class("list-unstyled mb-0"),
-				),
-			),
-			html.Li(
-				html.Class("dropdown-item"),
-				html.Hr(
-					html.Class("dropdown-divider"),
-				),
-			),
-			html.Li(
-				html.Class("dropdown-header"),
-				html.H6(
-					gomponents.Text("Searched"),
-				),
-			),
-			html.Li(
-				html.Class("px-3"),
-				html.Ul(
-					html.ID("searched-tags"),
-					html.Class("list-unstyled mb-0"),
-				),
-			),
+			tagDropdownList("selected-tags", "Selected"),
+			tagDropdownDivider(),
+			tagDropdownList("searched-tags", "Searched"),
 		),
 	)
 }
@@ -170,7 +163,7 @@ func TagBadges(tags []string) gomponents.Node {
 func RecipeTagEditor(tags gomponents.Group) gomponents.Node {
 	return html.Div(
 		html.Class("m-2"),
-		gomponents.Attr("x-data", fmt.Sprintf("{ maxTagLen: %d }", data.MaxTagNameLength)),
+		gomponents.Attr("x-data", fmt.Sprintf("{ maxTagLen: %d }", maxTagNameLength)),
 		gomponents.Attr("@click", `
 			if ($event.target.closest('[data-recipe-tag-add]')) {
 				const tag = document.getElementById('recipe-tag').content.cloneNode(true);

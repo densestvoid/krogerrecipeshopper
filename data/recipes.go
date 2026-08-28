@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq"
 )
 
 const (
@@ -33,18 +32,6 @@ type Recipe struct {
 	Tags            []string  `db:"tags"`
 }
 
-type listRecipe struct {
-	ListID          uuid.UUID      `db:"list_id"`
-	AccountID       uuid.UUID      `db:"account_id"`
-	Name            string         `db:"name"`
-	Description     string         `db:"description"`
-	InstructionType string         `db:"instruction_type"`
-	Instructions    string         `db:"instructions"`
-	Visibility      string         `db:"visibility"`
-	Favorite        bool           `db:"favorite"`
-	Tags            pq.StringArray `db:"tags"`
-}
-
 func (r *Repository) GetRecipe(ctx context.Context, listID uuid.UUID, accountID uuid.UUID) (Recipe, error) {
 	namedQuery, err := r.db.PrepareNamedContext(ctx, `
 		SELECT
@@ -67,10 +54,11 @@ func (r *Repository) GetRecipe(ctx context.Context, listID uuid.UUID, accountID 
 		return Recipe{}, err
 	}
 
-	recipe.Tags, err = r.listRecipeTags(ctx, listID)
+	tagsByListID, err := r.listTagsByRecipeListIDs(ctx, []uuid.UUID{listID})
 	if err != nil {
 		return Recipe{}, err
 	}
+	recipe.Tags = tagsByListID[listID]
 
 	return recipe, nil
 }
@@ -136,8 +124,7 @@ func (r *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filte
 	query := `
 		SELECT
 			recipes.*,
-			favorites.account_id IS NOT NULL as favorite,
-			tags.tags as tags
+			favorites.account_id IS NOT NULL as favorite
 		FROM recipe_list_view AS recipes
 			LEFT JOIN favorites ON favorites.list_id = recipes.list_id AND favorites.account_id = :accountID
 			LEFT JOIN (
@@ -172,24 +159,23 @@ func (r *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filte
 	}
 	defer namedQuery.Close()
 
-	var listRecipes = []listRecipe{}
-	if err := namedQuery.Select(&listRecipes, namedArgs); err != nil {
+	var recipes []Recipe
+	if err := namedQuery.Select(&recipes, namedArgs); err != nil {
 		return nil, err
 	}
 
-	var recipes = []Recipe{}
-	for _, listRecipe := range listRecipes {
-		recipes = append(recipes, Recipe{
-			ListID:          listRecipe.ListID,
-			AccountID:       listRecipe.AccountID,
-			Name:            listRecipe.Name,
-			Description:     listRecipe.Description,
-			InstructionType: listRecipe.InstructionType,
-			Instructions:    listRecipe.Instructions,
-			Visibility:      listRecipe.Visibility,
-			Favorite:        listRecipe.Favorite,
-			Tags:            listRecipe.Tags,
-		})
+	listIDs := make([]uuid.UUID, len(recipes))
+	for i, recipe := range recipes {
+		listIDs[i] = recipe.ListID
+	}
+
+	tagsByListID, err := r.listTagsByRecipeListIDs(ctx, listIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range recipes {
+		recipes[i].Tags = tagsByListID[recipes[i].ListID]
 	}
 	return recipes, nil
 }

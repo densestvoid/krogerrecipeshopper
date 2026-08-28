@@ -12,13 +12,6 @@ import (
 	"github.com/densestvoid/krogerrecipeshopper/templates"
 )
 
-func recipeRequestErrorStatus(err error) int {
-	if errors.Is(err, data.ErrTagNameTooLong) {
-		return http.StatusBadRequest
-	}
-	return http.StatusInternalServerError
-}
-
 func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Route("/tags", NewTagsMux(repo))
@@ -88,7 +81,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 				return
 			}
 
-			tags, err := data.NormalizeTagNames(r.PostForm["tag"])
+			tags, err := normalizeTagNames(r.PostForm["tag"])
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
@@ -111,13 +104,21 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					Visibility:      visibility,
 					Tags:            tags,
 				}); err != nil {
-					http.Error(w, fmt.Sprintf("updating recipe: %v", err), recipeRequestErrorStatus(err))
+					status := http.StatusInternalServerError
+					if errors.Is(err, ErrTagNameTooLong) {
+						status = http.StatusBadRequest
+					}
+					http.Error(w, fmt.Sprintf("updating recipe: %v", err), status)
 					return
 				}
 			} else {
 				_, err := repo.CreateRecipe(r.Context(), authCookies.AccountID, name, description, instructionType, instructions, visibility, tags)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("creating recipe: %v", err), recipeRequestErrorStatus(err))
+					status := http.StatusInternalServerError
+					if errors.Is(err, ErrTagNameTooLong) {
+						status = http.StatusBadRequest
+					}
+					http.Error(w, fmt.Sprintf("creating recipe: %v", err), status)
 					return
 				}
 			}
@@ -148,7 +149,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 			}
 			filters = append(filters, data.ListRecipesFilterByVisibilities{Visibilities: r.Form["visibility"]})
 			if r.Form.Has("tag") {
-				tags, err := data.NormalizeTagNames(r.Form["tag"])
+				tags, err := normalizeTagNames(r.Form["tag"])
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusBadRequest)
 					return
@@ -270,7 +271,7 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					return
 				}
 
-				tags, err := data.NormalizeTagNames(r.PostForm["tag"])
+				tags, err := normalizeTagNames(r.PostForm["tag"])
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusBadRequest)
 					return
@@ -278,7 +279,11 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 
 				newListID, err := repo.CreateRecipe(r.Context(), authCookies.AccountID, name, description, instructionType, instructions, visibility, tags)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("creating new recipe: %v", err), recipeRequestErrorStatus(err))
+					status := http.StatusInternalServerError
+					if errors.Is(err, ErrTagNameTooLong) {
+						status = http.StatusBadRequest
+					}
+					http.Error(w, fmt.Sprintf("creating new recipe: %v", err), status)
 					return
 				}
 

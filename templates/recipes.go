@@ -12,8 +12,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const recipeSearchTrigger = "load,change delay:500ms,input changed delay:500ms,recipe-update from:body,tag-search from:body"
-
 func Recipes(accountID uuid.UUID) gomponents.Node {
 	return BasePage("Recipes", "/", gomponents.Group{
 		html.Div(
@@ -84,7 +82,7 @@ func Recipes(accountID uuid.UUID) gomponents.Node {
 				htmx.Target("#recipe-table"),
 				htmx.Swap("innerHTML"),
 				htmx.Vals(fmt.Sprintf(`{"accountID": "%s"}`, accountID)),
-				htmx.Trigger(recipeSearchTrigger),
+				htmx.Trigger("load,change delay:500ms,input changed delay:500ms,recipe-update from:body,tag-search from:body"),
 			),
 			html.Div(html.ID("recipe-table")),
 			ModalButton(
@@ -132,7 +130,7 @@ func FavoriteRecipes() gomponents.Node {
 					"favorites": true,
 					"visibility": ["%s", "%s", "%s"]
 				}`, data.VisibilityPublic, data.VisibilityFriends, data.VisibilityPrivate)),
-				htmx.Trigger(recipeSearchTrigger),
+				htmx.Trigger("load,change delay:500ms,input changed delay:500ms,recipe-update from:body,tag-search from:body"),
 			),
 			html.Div(html.ID("recipe-table")),
 		),
@@ -163,7 +161,7 @@ func ExploreRecipes() gomponents.Node {
 				),
 				TagSelect(),
 				htmx.Post("/recipes/search"),
-				htmx.Trigger(recipeSearchTrigger),
+				htmx.Trigger("load,change delay:500ms,input changed delay:500ms,recipe-update from:body,tag-search from:body"),
 				htmx.Target("#recipes-search-table"),
 				htmx.Vals(fmt.Sprintf(`{
 					"visibility": ["%s", "%s", "%s"]

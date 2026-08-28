@@ -2,90 +2,64 @@ package data
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
-const MaxTagNameLength = 32
-
-var ErrTagNameTooLong = errors.New("tag name exceeds maximum length")
-
-func NormalizeTagNames(tagNames []string) ([]string, error) {
-	seen := make(map[string]struct{})
-	filtered := []string{}
-	for _, name := range tagNames {
-		name = strings.TrimSpace(name)
-		if name == "" {
-			continue
-		}
-		name = strings.ToLower(name)
-		if len(name) > MaxTagNameLength {
-			return nil, fmt.Errorf("%w (%d characters max): %q", ErrTagNameTooLong, MaxTagNameLength, name)
-		}
-		if _, ok := seen[name]; ok {
-			continue
-		}
-		seen[name] = struct{}{}
-		filtered = append(filtered, name)
-	}
-	return filtered, nil
+type recipeTagRow struct {
+	RecipeListID uuid.UUID `db:"recipe_list_id"`
+	Name         string    `db:"name"`
 }
 
-func (r *Repository) ListTags(ctx context.Context, stub string, excludes []string) ([]string, error) {
-	excludes, err := NormalizeTagNames(excludes)
+func (r *Repository) listTagsByRecipeListIDs(ctx context.Context, listIDs []uuid.UUID) (map[uuid.UUID][]string, error) {
+	if len(listIDs) == 0 {
+		return map[uuid.UUID][]string{}, nil
+	}
+
+	var rows []recipeTagRow
+	query, args, err := sqlx.In(`
+		SELECT recipe_tags.recipe_list_id, tags.name
+		FROM recipe_tags
+			INNER JOIN tags ON tags.id = recipe_tags.tag_id
+		WHERE recipe_tags.recipe_list_id IN (?)
+		ORDER BY tags.name
+	`, listIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	stub = strings.ToLower(strings.TrimSpace(stub))
-
-	var query string
-	var args []any
-
-	if len(excludes) > 0 {
-		query = `
-			SELECT tags.name
-			FROM tags
-				INNER JOIN recipe_tags ON recipe_tags.tag_id = tags.id
-			WHERE tags.name ILIKE ? AND tags.name NOT IN (?)
-			GROUP BY tags.name
-			ORDER BY COUNT(recipe_tags.recipe_list_id) DESC
-			LIMIT 10
-		`
-		query, args, err = sqlx.In(query, "%"+stub+"%", excludes)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		query = `
-			SELECT tags.name
-			FROM tags
-				INNER JOIN recipe_tags ON recipe_tags.tag_id = tags.id
-			WHERE tags.name ILIKE ?
-			GROUP BY tags.name
-			ORDER BY COUNT(recipe_tags.recipe_list_id) DESC
-			LIMIT 10
-		`
-		args = []any{"%" + stub + "%"}
+	query = r.db.Rebind(query)
+	if err := r.db.SelectContext(ctx, &rows, query, args...); err != nil {
+		return nil, err
 	}
 
-	query = r.db.Rebind(query)
-	var tags []string
-	return tags, r.db.SelectContext(ctx, &tags, query, args...)
+	tagsByListID := make(map[uuid.UUID][]string)
+	for _, row := range rows {
+		tagsByListID[row.RecipeListID] = append(tagsByListID[row.RecipeListID], row.Name)
+	}
+	return tagsByListID, nil
 }
 
-func (r *Repository) listRecipeTags(ctx context.Context, recipeListID uuid.UUID) ([]string, error) {
+func (r *Repository) ListTags(ctx context.Context, stub string, excludes []string) ([]string, error) {
+	if excludes == nil {
+		excludes = []string{}
+	}
+
+	stub = strings.ToLower(strings.TrimSpace(stub))
+
 	var tags []string
 	return tags, r.db.SelectContext(ctx, &tags, `
-		SELECT name
+		SELECT tags.name
 		FROM tags
 			INNER JOIN recipe_tags ON recipe_tags.tag_id = tags.id
-		WHERE recipe_list_id = $1
-	`, recipeListID)
+		WHERE tags.name ILIKE $1
+			AND NOT (tags.name = ANY($2))
+		GROUP BY tags.name
+		ORDER BY COUNT(recipe_tags.recipe_list_id) DESC
+		LIMIT 10
+	`, "%"+stub+"%", excludes)
 }
 
 func (r *Repository) deleteOrphanTags(ctx context.Context, dtx dtx) error {
@@ -100,12 +74,6 @@ func (r *Repository) deleteOrphanTags(ctx context.Context, dtx dtx) error {
 }
 
 func (r *Repository) setRecipeTags(ctx context.Context, dtx dtx, recipeListID uuid.UUID, tagNames []string) error {
-	normalized, err := NormalizeTagNames(tagNames)
-	if err != nil {
-		return err
-	}
-	tagNames = normalized
-
 	if len(tagNames) == 0 {
 		if _, err := dtx.ExecContext(ctx, `DELETE FROM recipe_tags WHERE recipe_list_id = $1`, recipeListID); err != nil {
 			return err
@@ -113,41 +81,35 @@ func (r *Repository) setRecipeTags(ctx context.Context, dtx dtx, recipeListID uu
 		return r.deleteOrphanTags(ctx, dtx)
 	}
 
-	var tagIDs []uuid.UUID
-	tags := []map[string]any{}
-	for _, name := range tagNames {
-		tags = append(tags, map[string]any{
-			"name": name,
-		})
+	tags := make([]map[string]any, len(tagNames))
+	for i, name := range tagNames {
+		tags[i] = map[string]any{"name": name}
 	}
 
 	query, args, err := sqlx.Named(`INSERT INTO tags (name) VALUES (:name) ON CONFLICT ((lower(name))) DO NOTHING`, tags)
 	if err != nil {
 		return err
 	}
-
 	query, args, err = sqlx.In(query, args...)
 	if err != nil {
 		return err
 	}
-
 	query = dtx.Rebind(query)
 	if _, err := dtx.ExecContext(ctx, query, args...); err != nil {
 		return err
 	}
 
+	var tagIDs []uuid.UUID
 	query, args, err = sqlx.Named(`SELECT id FROM tags WHERE name IN (:tagNames)`, map[string]any{
 		"tagNames": tagNames,
 	})
 	if err != nil {
 		return err
 	}
-
 	query, args, err = sqlx.In(query, args...)
 	if err != nil {
 		return err
 	}
-
 	query = dtx.Rebind(query)
 	if err := dtx.SelectContext(ctx, &tagIDs, query, args...); err != nil {
 		return err
@@ -160,12 +122,10 @@ func (r *Repository) setRecipeTags(ctx context.Context, dtx dtx, recipeListID uu
 	if err != nil {
 		return err
 	}
-
 	query, args, err = sqlx.In(query, args...)
 	if err != nil {
 		return err
 	}
-
 	query = dtx.Rebind(query)
 	if _, err := dtx.ExecContext(ctx, query, args...); err != nil {
 		return err
@@ -187,12 +147,10 @@ func (r *Repository) setRecipeTags(ctx context.Context, dtx dtx, recipeListID uu
 	if err != nil {
 		return err
 	}
-
 	query, args, err = sqlx.In(query, args...)
 	if err != nil {
 		return err
 	}
-
 	query = dtx.Rebind(query)
 	if _, err := dtx.ExecContext(ctx, query, args...); err != nil {
 		return err
