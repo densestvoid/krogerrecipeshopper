@@ -11,37 +11,6 @@ import (
 
 const maxTagNameLength = 32
 
-func tagDropdownHeader(title string) gomponents.Node {
-	return html.Li(
-		html.Class("dropdown-header"),
-		html.H6(
-			gomponents.Text(title),
-		),
-	)
-}
-
-func tagDropdownDivider() gomponents.Node {
-	return html.Li(
-		html.Class("dropdown-item"),
-		html.Hr(
-			html.Class("dropdown-divider"),
-		),
-	)
-}
-
-func tagDropdownList(id string, header string) gomponents.Node {
-	return gomponents.Group{
-		tagDropdownHeader(header),
-		html.Li(
-			html.Class("px-3"),
-			html.Ul(
-				html.ID(id),
-				html.Class("list-unstyled mb-0"),
-			),
-		),
-	}
-}
-
 func TagSelect() gomponents.Node {
 	return html.Div(
 		html.ID("tag-search-dropdown"),
@@ -77,7 +46,12 @@ func TagSelect() gomponents.Node {
 		),
 		html.Ul(
 			html.Class("dropdown-menu"),
-			tagDropdownHeader("Search"),
+			html.Li(
+				html.Class("dropdown-header"),
+				html.H6(
+					gomponents.Text("Search"),
+				),
+			),
 			html.Li(
 				html.Class("dropdown-item"),
 				FormInput(
@@ -99,14 +73,48 @@ func TagSelect() gomponents.Node {
 					),
 				),
 			),
-			tagDropdownDivider(),
+			html.Li(
+				html.Class("dropdown-item"),
+				html.Hr(
+					html.Class("dropdown-divider"),
+				),
+			),
 			html.Template(
 				html.ID("selected-tag-template"),
 				TagListSelectItem(),
 			),
-			tagDropdownList("selected-tags", "Selected"),
-			tagDropdownDivider(),
-			tagDropdownList("searched-tags", "Searched"),
+			html.Li(
+				html.Class("dropdown-header"),
+				html.H6(
+					gomponents.Text("Selected"),
+				),
+			),
+			html.Li(
+				html.Class("px-3"),
+				html.Ul(
+					html.ID("selected-tags"),
+					html.Class("list-unstyled mb-0"),
+				),
+			),
+			html.Li(
+				html.Class("dropdown-item"),
+				html.Hr(
+					html.Class("dropdown-divider"),
+				),
+			),
+			html.Li(
+				html.Class("dropdown-header"),
+				html.H6(
+					gomponents.Text("Searched"),
+				),
+			),
+			html.Li(
+				html.Class("px-3"),
+				html.Ul(
+					html.ID("searched-tags"),
+					html.Class("list-unstyled mb-0"),
+				),
+			),
 		),
 	)
 }
