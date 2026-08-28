@@ -10,40 +10,6 @@ import (
 
 const MaxTagNameLength = 32
 
-type recipeTagRow struct {
-	RecipeListID uuid.UUID `db:"recipe_list_id"`
-	Name         string    `db:"name"`
-}
-
-func (r *Repository) listTagsByRecipeListIDs(ctx context.Context, listIDs []uuid.UUID) (map[uuid.UUID][]string, error) {
-	if len(listIDs) == 0 {
-		return map[uuid.UUID][]string{}, nil
-	}
-
-	var rows []recipeTagRow
-	query, args, err := sqlx.In(`
-		SELECT recipe_tags.recipe_list_id, tags.name
-		FROM recipe_tags
-			INNER JOIN tags ON tags.id = recipe_tags.tag_id
-		WHERE recipe_tags.recipe_list_id IN (?)
-		ORDER BY tags.name
-	`, listIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	query = r.db.Rebind(query)
-	if err := r.db.SelectContext(ctx, &rows, query, args...); err != nil {
-		return nil, err
-	}
-
-	tagsByListID := make(map[uuid.UUID][]string)
-	for _, row := range rows {
-		tagsByListID[row.RecipeListID] = append(tagsByListID[row.RecipeListID], row.Name)
-	}
-	return tagsByListID, nil
-}
-
 func (r *Repository) ListTags(ctx context.Context, stub string, excludes []string) ([]string, error) {
 	if excludes == nil {
 		excludes = []string{}

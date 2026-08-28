@@ -20,6 +20,15 @@ const (
 	InstructionTypeLink = "link"
 )
 
+const recipeTagsJoin = `
+	LEFT JOIN (
+		SELECT recipe_list_id, COALESCE(ARRAY_AGG(name ORDER BY name), '{}') AS tags
+		FROM recipe_tags
+			INNER JOIN tags ON tags.id = recipe_tags.tag_id
+		GROUP BY recipe_list_id
+	) AS tags ON tags.recipe_list_id = recipes.list_id
+`
+
 type Recipe struct {
 	ListID          uuid.UUID `db:"list_id"`
 	AccountID       uuid.UUID `db:"account_id"`
@@ -29,16 +38,18 @@ type Recipe struct {
 	Instructions    string    `db:"instructions"`
 	Visibility      string    `db:"visibility"`
 	Favorite        bool      `db:"favorite"`
-	Tags            []string
+	Tags            []string  `db:"tags"`
 }
 
 func (r *Repository) GetRecipe(ctx context.Context, listID uuid.UUID, accountID uuid.UUID) (Recipe, error) {
 	namedQuery, err := r.db.PrepareNamedContext(ctx, `
 		SELECT
 			recipes.*,
-			favorites.account_id IS NOT NULL as favorite
+			favorites.account_id IS NOT NULL as favorite,
+			COALESCE(tags.tags, '{}') as tags
 		FROM recipe_list_view AS recipes
 			LEFT JOIN favorites ON favorites.list_id = recipes.list_id AND favorites.account_id = :accountID
+		`+recipeTagsJoin+`
 		WHERE recipes.list_id = :listID
 	`)
 	if err != nil {
@@ -47,20 +58,10 @@ func (r *Repository) GetRecipe(ctx context.Context, listID uuid.UUID, accountID 
 	defer namedQuery.Close()
 
 	var recipe Recipe
-	if err := namedQuery.GetContext(ctx, &recipe, map[string]any{
+	return recipe, namedQuery.GetContext(ctx, &recipe, map[string]any{
 		"listID":    listID,
 		"accountID": accountID,
-	}); err != nil {
-		return Recipe{}, err
-	}
-
-	tagsByListID, err := r.listTagsByRecipeListIDs(ctx, []uuid.UUID{listID})
-	if err != nil {
-		return Recipe{}, err
-	}
-	recipe.Tags = tagsByListID[listID]
-
-	return recipe, nil
+	})
 }
 
 type ListRecipesFilter interface {
@@ -112,14 +113,7 @@ func (f ListRecipesFilterByTags) listRecipoesFilter(args map[string]any) string 
 		return `false`
 	}
 	args["recipeTags"] = f.Tags
-	args["recipeTagCount"] = len(f.Tags)
-	return `(
-		SELECT COUNT(DISTINCT tags.name)
-		FROM recipe_tags
-			INNER JOIN tags ON tags.id = recipe_tags.tag_id
-		WHERE recipe_tags.recipe_list_id = recipes.list_id
-			AND tags.name = ANY(:recipeTags)
-	) = :recipeTagCount`
+	return `COALESCE(tags.tags, '{}') @> :recipeTags`
 }
 
 type ListRecipesOrderBy struct {
@@ -131,9 +125,11 @@ func (r *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filte
 	query := `
 		SELECT
 			recipes.*,
-			favorites.account_id IS NOT NULL as favorite
+			favorites.account_id IS NOT NULL as favorite,
+			COALESCE(tags.tags, '{}') as tags
 		FROM recipe_list_view AS recipes
 			LEFT JOIN favorites ON favorites.list_id = recipes.list_id AND favorites.account_id = :accountID
+		` + recipeTagsJoin + `
 		WHERE (recipes.account_id = :accountID OR visibility = 'public')
 	`
 	namedArgs := map[string]any{"accountID": accountID}
@@ -161,24 +157,7 @@ func (r *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filte
 	defer namedQuery.Close()
 
 	var recipes []Recipe
-	if err := namedQuery.Select(&recipes, namedArgs); err != nil {
-		return nil, err
-	}
-
-	listIDs := make([]uuid.UUID, len(recipes))
-	for i, recipe := range recipes {
-		listIDs[i] = recipe.ListID
-	}
-
-	tagsByListID, err := r.listTagsByRecipeListIDs(ctx, listIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	for i := range recipes {
-		recipes[i].Tags = tagsByListID[recipes[i].ListID]
-	}
-	return recipes, nil
+	return recipes, namedQuery.Select(&recipes, namedArgs)
 }
 
 func (r *Repository) CreateRecipe(ctx context.Context, accountID uuid.UUID, name, description, instructionType, instructions, visibility string, tags []string) (listID uuid.UUID, retErr error) {
