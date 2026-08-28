@@ -20,6 +20,15 @@ const (
 	InstructionTypeLink = "link"
 )
 
+const recipeTagsJoin = `
+	LEFT JOIN (
+		SELECT recipe_list_id, COALESCE(ARRAY_AGG(name ORDER BY name), '{}') AS tags
+		FROM recipe_tags
+			INNER JOIN tags ON tags.id = recipe_tags.tag_id
+		GROUP BY recipe_list_id
+	) AS tags ON tags.recipe_list_id = recipes.list_id
+`
+
 type Recipe struct {
 	ListID          uuid.UUID `db:"list_id"`
 	AccountID       uuid.UUID `db:"account_id"`
@@ -29,15 +38,18 @@ type Recipe struct {
 	Instructions    string    `db:"instructions"`
 	Visibility      string    `db:"visibility"`
 	Favorite        bool      `db:"favorite"`
+	Tags            []string  `db:"tags"`
 }
 
 func (r *Repository) GetRecipe(ctx context.Context, listID uuid.UUID, accountID uuid.UUID) (Recipe, error) {
 	namedQuery, err := r.db.PrepareNamedContext(ctx, `
 		SELECT
 			recipes.*,
-			favorites.account_id IS NOT NULL as favorite
+			favorites.account_id IS NOT NULL as favorite,
+			COALESCE(tags.tags, '{}') as tags
 		FROM recipe_list_view AS recipes
 			LEFT JOIN favorites ON favorites.list_id = recipes.list_id AND favorites.account_id = :accountID
+		`+recipeTagsJoin+`
 		WHERE recipes.list_id = :listID
 	`)
 	if err != nil {
@@ -92,6 +104,18 @@ func (f ListRecipesFilterByVisibilities) listRecipoesFilter(args map[string]any)
 	return `visibility = ANY(:recipeVisibilities)`
 }
 
+type ListRecipesFilterByTags struct {
+	Tags []string
+}
+
+func (f ListRecipesFilterByTags) listRecipoesFilter(args map[string]any) string {
+	if len(f.Tags) == 0 {
+		return `false`
+	}
+	args["recipeTags"] = f.Tags
+	return `COALESCE(tags.tags, '{}') @> :recipeTags`
+}
+
 type ListRecipesOrderBy struct {
 	Field     string
 	Direction string
@@ -101,9 +125,11 @@ func (r *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filte
 	query := `
 		SELECT
 			recipes.*,
-			favorites.account_id IS NOT NULL as favorite
+			favorites.account_id IS NOT NULL as favorite,
+			COALESCE(tags.tags, '{}') as tags
 		FROM recipe_list_view AS recipes
 			LEFT JOIN favorites ON favorites.list_id = recipes.list_id AND favorites.account_id = :accountID
+		` + recipeTagsJoin + `
 		WHERE (recipes.account_id = :accountID OR visibility = 'public')
 	`
 	namedArgs := map[string]any{"accountID": accountID}
@@ -130,11 +156,11 @@ func (r *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filte
 	}
 	defer namedQuery.Close()
 
-	var recipes = []Recipe{}
+	var recipes []Recipe
 	return recipes, namedQuery.Select(&recipes, namedArgs)
 }
 
-func (r *Repository) CreateRecipe(ctx context.Context, accountID uuid.UUID, name, description, instructionType, instructions, visibility string) (listID uuid.UUID, retErr error) {
+func (r *Repository) CreateRecipe(ctx context.Context, accountID uuid.UUID, name, description, instructionType, instructions, visibility string, tags []string) (listID uuid.UUID, retErr error) {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return uuid.Nil, err
@@ -163,7 +189,6 @@ func (r *Repository) CreateRecipe(ctx context.Context, accountID uuid.UUID, name
 		return uuid.Nil, err
 	}
 
-	var id uuid.UUID
 	if _, err := namedQuery.ExecContext(ctx, map[string]any{
 		"listID":          listID,
 		"instructionType": instructionType,
@@ -173,7 +198,11 @@ func (r *Repository) CreateRecipe(ctx context.Context, accountID uuid.UUID, name
 		return uuid.Nil, err
 	}
 
-	return id, tx.Commit()
+	if err := r.setRecipeTags(ctx, tx, listID, tags); err != nil {
+		return uuid.Nil, err
+	}
+
+	return listID, tx.Commit()
 }
 
 func (r *Repository) UpdateRecipe(ctx context.Context, recipe Recipe) (retErr error) {
@@ -210,6 +239,10 @@ func (r *Repository) UpdateRecipe(ctx context.Context, recipe Recipe) (retErr er
 		return err
 	}
 
+	if err := r.setRecipeTags(ctx, tx, recipe.ListID, recipe.Tags); err != nil {
+		return err
+	}
+
 	return tx.Commit()
 }
 
@@ -230,6 +263,12 @@ func (m *Repository) DeleteRecipe(ctx context.Context, listID uuid.UUID) (retErr
 	}
 	defer Rollback(tx, &retErr)
 
+	if _, err := tx.ExecContext(ctx, `DELETE FROM recipe_tags WHERE recipe_list_id = $1`, listID); err != nil {
+		return err
+	}
+	if err := m.deleteOrphanTags(ctx, tx); err != nil {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM favorites WHERE list_id = $1`, listID); err != nil {
 		return err
 	}

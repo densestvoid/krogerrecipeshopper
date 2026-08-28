@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -13,6 +14,8 @@ import (
 
 func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func(chi.Router) {
 	return func(r chi.Router) {
+		r.Route("/tags", NewTagsMux(repo))
+
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			authCookies, err := GetAuthCookies(r)
 			if err != nil {
@@ -78,6 +81,12 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 				return
 			}
 
+			tags, err := normalizeTagNames(r.PostForm["tag"])
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
 			if r.PostForm.Has("id") {
 				listID, err := uuid.Parse(r.PostForm.Get("id"))
 				if err != nil {
@@ -93,14 +102,23 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					InstructionType: instructionType,
 					Instructions:    instructions,
 					Visibility:      visibility,
+					Tags:            tags,
 				}); err != nil {
-					http.Error(w, fmt.Sprintf("updating recipe: %v", err), http.StatusInternalServerError)
+					status := http.StatusInternalServerError
+					if errors.Is(err, ErrTagNameTooLong) {
+						status = http.StatusBadRequest
+					}
+					http.Error(w, fmt.Sprintf("updating recipe: %v", err), status)
 					return
 				}
 			} else {
-				_, err := repo.CreateRecipe(r.Context(), authCookies.AccountID, name, description, instructionType, instructions, visibility)
+				_, err := repo.CreateRecipe(r.Context(), authCookies.AccountID, name, description, instructionType, instructions, visibility, tags)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("creating recipe: %v", err), http.StatusInternalServerError)
+					status := http.StatusInternalServerError
+					if errors.Is(err, ErrTagNameTooLong) {
+						status = http.StatusBadRequest
+					}
+					http.Error(w, fmt.Sprintf("creating recipe: %v", err), status)
 					return
 				}
 			}
@@ -130,6 +148,16 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 				filters = append(filters, data.ListRecipesFilterByFavorites{})
 			}
 			filters = append(filters, data.ListRecipesFilterByVisibilities{Visibilities: r.Form["visibility"]})
+			if r.Form.Has("tag") {
+				tags, err := normalizeTagNames(r.Form["tag"])
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if len(tags) > 0 {
+					filters = append(filters, data.ListRecipesFilterByTags{Tags: tags})
+				}
+			}
 			if len(filters) == 0 {
 				if err := templates.RecipeTable(authCookies.AccountID, nil).Render(w); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -243,9 +271,19 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					return
 				}
 
-				newListID, err := repo.CreateRecipe(r.Context(), authCookies.AccountID, name, description, instructionType, instructions, visibility)
+				tags, err := normalizeTagNames(r.PostForm["tag"])
 				if err != nil {
-					http.Error(w, fmt.Sprintf("creating new recipe: %v", err), http.StatusInternalServerError)
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				newListID, err := repo.CreateRecipe(r.Context(), authCookies.AccountID, name, description, instructionType, instructions, visibility, tags)
+				if err != nil {
+					status := http.StatusInternalServerError
+					if errors.Is(err, ErrTagNameTooLong) {
+						status = http.StatusBadRequest
+					}
+					http.Error(w, fmt.Sprintf("creating new recipe: %v", err), status)
 					return
 				}
 
