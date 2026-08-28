@@ -29,7 +29,7 @@ type Recipe struct {
 	Instructions    string    `db:"instructions"`
 	Visibility      string    `db:"visibility"`
 	Favorite        bool      `db:"favorite"`
-	Tags            []string  `db:"tags"`
+	Tags            []string
 }
 
 func (r *Repository) GetRecipe(ctx context.Context, listID uuid.UUID, accountID uuid.UUID) (Recipe, error) {
@@ -112,7 +112,14 @@ func (f ListRecipesFilterByTags) listRecipoesFilter(args map[string]any) string 
 		return `false`
 	}
 	args["recipeTags"] = f.Tags
-	return `COALESCE(tags.tags, '{}') @> :recipeTags`
+	args["recipeTagCount"] = len(f.Tags)
+	return `(
+		SELECT COUNT(DISTINCT tags.name)
+		FROM recipe_tags
+			INNER JOIN tags ON tags.id = recipe_tags.tag_id
+		WHERE recipe_tags.recipe_list_id = recipes.list_id
+			AND tags.name = ANY(:recipeTags)
+	) = :recipeTagCount`
 }
 
 type ListRecipesOrderBy struct {
@@ -127,12 +134,6 @@ func (r *Repository) ListRecipes(ctx context.Context, accountID uuid.UUID, filte
 			favorites.account_id IS NOT NULL as favorite
 		FROM recipe_list_view AS recipes
 			LEFT JOIN favorites ON favorites.list_id = recipes.list_id AND favorites.account_id = :accountID
-			LEFT JOIN (
-			    SELECT recipe_list_id, ARRAY_AGG(name) AS tags
-				FROM recipe_tags
-					INNER JOIN tags ON tags.id = recipe_tags.tag_id
-				GROUP BY recipe_list_id
-			) AS tags ON tags.recipe_list_id = recipes.list_id
 		WHERE (recipes.account_id = :accountID OR visibility = 'public')
 	`
 	namedArgs := map[string]any{"accountID": accountID}

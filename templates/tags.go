@@ -4,18 +4,17 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/densestvoid/krogerrecipeshopper/data"
 	"maragu.dev/gomponents"
 	htmx "maragu.dev/gomponents-htmx"
 	"maragu.dev/gomponents/html"
 )
 
-const maxTagNameLength = 32
-
 func TagSelect() gomponents.Node {
 	return html.Div(
 		html.ID("tag-search-dropdown"),
 		html.Class("dropdown"),
-		gomponents.Attr("x-data", fmt.Sprintf("{ maxTagLen: %d }", maxTagNameLength)),
+		gomponents.Attr("x-data", fmt.Sprintf("{ maxTagLen: %d }", data.MaxTagNameLength)),
 		gomponents.Attr("@click.stop", `
 			const searchItem = $event.target.closest('[data-tag-search-item]');
 			if (searchItem) {
@@ -63,7 +62,7 @@ func TagSelect() gomponents.Node {
 						html.Class("form-control"),
 						html.Type("text"),
 						html.Name("search"),
-						gomponents.Attr("maxlength", fmt.Sprintf("%d", maxTagNameLength)),
+						gomponents.Attr("maxlength", fmt.Sprintf("%d", data.MaxTagNameLength)),
 						htmx.Get("/recipes/tags"),
 						htmx.Target("#searched-tags"),
 						htmx.Swap("innerHTML"),
@@ -171,7 +170,7 @@ func TagBadges(tags []string) gomponents.Node {
 func RecipeTagEditor(tags gomponents.Group) gomponents.Node {
 	return html.Div(
 		html.Class("m-2"),
-		gomponents.Attr("x-data", fmt.Sprintf("{ maxTagLen: %d }", maxTagNameLength)),
+		gomponents.Attr("x-data", fmt.Sprintf("{ maxTagLen: %d }", data.MaxTagNameLength)),
 		gomponents.Attr("@click", `
 			if ($event.target.closest('[data-recipe-tag-add]')) {
 				const tag = document.getElementById('recipe-tag').content.cloneNode(true);

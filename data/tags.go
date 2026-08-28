@@ -8,6 +8,8 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+const MaxTagNameLength = 32
+
 type recipeTagRow struct {
 	RecipeListID uuid.UUID `db:"recipe_list_id"`
 	Name         string    `db:"name"`
@@ -74,10 +76,11 @@ func (r *Repository) deleteOrphanTags(ctx context.Context, dtx dtx) error {
 }
 
 func (r *Repository) setRecipeTags(ctx context.Context, dtx dtx, recipeListID uuid.UUID, tagNames []string) error {
+	if _, err := dtx.ExecContext(ctx, `DELETE FROM recipe_tags WHERE recipe_list_id = $1`, recipeListID); err != nil {
+		return err
+	}
+
 	if len(tagNames) == 0 {
-		if _, err := dtx.ExecContext(ctx, `DELETE FROM recipe_tags WHERE recipe_list_id = $1`, recipeListID); err != nil {
-			return err
-		}
 		return r.deleteOrphanTags(ctx, dtx)
 	}
 
@@ -115,35 +118,15 @@ func (r *Repository) setRecipeTags(ctx context.Context, dtx dtx, recipeListID uu
 		return err
 	}
 
-	query, args, err = sqlx.Named(`DELETE FROM recipe_tags WHERE recipe_list_id = :recipeListID AND tag_id NOT IN (:tagIDs)`, map[string]any{
-		"recipeListID": recipeListID,
-		"tagIDs":       tagIDs,
-	})
-	if err != nil {
-		return err
-	}
-	query, args, err = sqlx.In(query, args...)
-	if err != nil {
-		return err
-	}
-	query = dtx.Rebind(query)
-	if _, err := dtx.ExecContext(ctx, query, args...); err != nil {
-		return err
+	recipeTags := make([]map[string]any, len(tagIDs))
+	for i, tagID := range tagIDs {
+		recipeTags[i] = map[string]any{
+			"recipeListID": recipeListID,
+			"tagID":        tagID,
+		}
 	}
 
-	query, args, err = sqlx.Named(`
-		INSERT INTO recipe_tags (recipe_list_id, tag_id)
-		SELECT :recipeListID, id
-		FROM tags
-		WHERE id IN (:tagIDs) AND id NOT IN (
-			SELECT tag_id
-			FROM recipe_tags
-			WHERE recipe_list_id = :recipeListID
-		)
-	`, map[string]any{
-		"recipeListID": recipeListID,
-		"tagIDs":       tagIDs,
-	})
+	query, args, err = sqlx.Named(`INSERT INTO recipe_tags (recipe_list_id, tag_id) VALUES (:recipeListID, :tagID)`, recipeTags)
 	if err != nil {
 		return err
 	}

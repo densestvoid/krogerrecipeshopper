@@ -12,8 +12,6 @@ import (
 	"github.com/densestvoid/krogerrecipeshopper/templates"
 )
 
-const MaxTagNameLength = 32
-
 var ErrTagNameTooLong = errors.New("tag name exceeds maximum length")
 
 func normalizeTagNames(tagNames []string) ([]string, error) {
@@ -25,8 +23,8 @@ func normalizeTagNames(tagNames []string) ([]string, error) {
 			continue
 		}
 		name = strings.ToLower(name)
-		if len(name) > MaxTagNameLength {
-			return nil, fmt.Errorf("%w (%d characters max): %q", ErrTagNameTooLong, MaxTagNameLength, name)
+		if len(name) > data.MaxTagNameLength {
+			return nil, fmt.Errorf("%w (%d characters max): %q", ErrTagNameTooLong, data.MaxTagNameLength, name)
 		}
 		if _, ok := seen[name]; ok {
 			continue
