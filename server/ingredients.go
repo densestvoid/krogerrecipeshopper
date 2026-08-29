@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -51,45 +50,12 @@ func RequireRecipeIngredientsAccess(repo *data.Repository) func(http.Handler) ht
 			}
 
 			listID := uuid.MustParse(chi.URLParam(r, "id"))
-			list, err := repo.GetList(r.Context(), listID)
+			recipe, err := repo.GetRecipe(r.Context(), listID, authCookies.AccountID)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
 			}
-
-			if list.AccountID != authCookies.AccountID {
-				recipe, err := repo.GetRecipe(r.Context(), listID, authCookies.AccountID)
-				if err != nil {
-					http.Error(w, "unauthorized", http.StatusUnauthorized)
-					return
-				}
-				if !app.CanViewRecipe(recipe, authCookies.AccountID) {
-					http.Error(w, "unauthorized", http.StatusUnauthorized)
-					return
-				}
-			}
-
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-func RequireListOwner(repo *data.Repository) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authCookies, err := GetAuthCookies(r)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusUnauthorized)
-				return
-			}
-
-			listID := uuid.MustParse(chi.URLParam(r, "id"))
-			list, err := repo.GetList(r.Context(), listID)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			if list.AccountID != authCookies.AccountID {
+			if !app.CanViewRecipe(recipe, authCookies.AccountID) {
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
 			}
@@ -101,37 +67,6 @@ func RequireListOwner(repo *data.Repository) func(http.Handler) http.Handler {
 
 func ProductImageLink(productID, imageSize string) string {
 	return fmt.Sprintf("https://www.kroger.com/product/images/%s/front/%s", imageSize, productID)
-}
-
-func ingredientBasePath(r *http.Request) string {
-	basePath := r.URL.Path
-	if !strings.HasSuffix(basePath, "/") {
-		basePath += "/"
-	}
-	return basePath
-}
-
-func ingredientDetailsHandler(repo *data.Repository) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		listID := uuid.MustParse(chi.URLParam(r, "id"))
-
-		productID := chi.URLParam(r, "productID")
-		var ingredient data.Ingredient
-		if productID != "" {
-			var err error
-			ingredient, err = repo.GetIngredient(r.Context(), listID, productID)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		}
-
-		if err := templates.IngredientDetailsModalContent(ingredient).Render(w); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-	}
 }
 
 func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) func(chi.Router) {
@@ -150,7 +85,7 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 				return
 			}
 
-			if err := templates.Ingredients(authCookies.AccountID, list, ingredientBasePath(r)).Render(w); err != nil {
+			if err := templates.Ingredients(authCookies.AccountID, list, r.URL.Path+"/").Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -247,9 +182,15 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 		})
 
 		r.Group(func(r chi.Router) {
-			r.Use(RequireListOwner(repo))
+			r.Use(RequireListIngredientsAccess(repo))
 
-			r.Get("/details", ingredientDetailsHandler(repo))
+			r.Get("/details", func(w http.ResponseWriter, r *http.Request) {
+				if err := templates.IngredientDetailsModalContent(data.Ingredient{}).Render(w); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+			})
 
 			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
 				listID := uuid.MustParse(chi.URLParam(r, "id"))
@@ -297,7 +238,22 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 			})
 
 			r.Route("/{productID}", func(r chi.Router) {
-				r.Get("/details", ingredientDetailsHandler(repo))
+				r.Get("/details", func(w http.ResponseWriter, r *http.Request) {
+					listID := uuid.MustParse(chi.URLParam(r, "id"))
+					productID := chi.URLParam(r, "productID")
+
+					ingredient, err := repo.GetIngredient(r.Context(), listID, productID)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+
+					if err := templates.IngredientDetailsModalContent(ingredient).Render(w); err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+					w.WriteHeader(http.StatusOK)
+				})
 
 				r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
 					listID := uuid.MustParse(chi.URLParam(r, "id"))
