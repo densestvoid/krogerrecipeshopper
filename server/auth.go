@@ -188,7 +188,7 @@ func AuthenticationMiddleware(config Config, repo *data.Repository) func(next ht
 					sessionID = session.ID
 					accountID = account.ID
 
-					http.SetCookie(w, config.authCookie("sessionID", session.ID.String(), 0))
+					http.SetCookie(w, authCookie("sessionID", session.ID.String(), 0, !config.Dev))
 				}
 			}
 
@@ -205,12 +205,12 @@ func AuthenticationMiddleware(config Config, repo *data.Repository) func(next ht
 
 const RefreshTokenMaxAgeSeconds = 15_768_000 // 6 months in seconds, taken from an FAQ response
 
-func (c Config) authCookie(name, value string, maxAge int) *http.Cookie {
+func authCookie(name, value string, maxAge int, secure bool) *http.Cookie {
 	cookie := &http.Cookie{
 		Path:     "/",
 		Name:     name,
 		Value:    value,
-		Secure:   !c.Dev,
+		Secure:   secure,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	}
@@ -220,29 +220,31 @@ func (c Config) authCookie(name, value string, maxAge int) *http.Cookie {
 	return cookie
 }
 
-func (c Config) clearAuthCookie(name string) *http.Cookie {
+func clearAuthCookie(name string, secure bool) *http.Cookie {
 	return &http.Cookie{
 		Path:     "/",
 		Name:     name,
 		Value:    "",
 		Expires:  time.Now(),
-		Secure:   !c.Dev,
+		Secure:   secure,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	}
 }
 
 func SetAuthResponseCookies(config Config, w http.ResponseWriter, session data.Session, credentials *kroger.PostTokenResponse) error {
-	http.SetCookie(w, config.authCookie("accessToken", credentials.AccessToken, credentials.ExpiresIn))
-	http.SetCookie(w, config.authCookie("refreshToken", credentials.RefreshToken, RefreshTokenMaxAgeSeconds))
-	http.SetCookie(w, config.authCookie("sessionID", session.ID.String(), credentials.ExpiresIn))
+	secure := !config.Dev
+	http.SetCookie(w, authCookie("accessToken", credentials.AccessToken, credentials.ExpiresIn, secure))
+	http.SetCookie(w, authCookie("refreshToken", credentials.RefreshToken, RefreshTokenMaxAgeSeconds, secure))
+	http.SetCookie(w, authCookie("sessionID", session.ID.String(), credentials.ExpiresIn, secure))
 	return nil
 }
 
 func ClearAuthCookies(config Config, w http.ResponseWriter) {
-	http.SetCookie(w, config.clearAuthCookie("accessToken"))
-	http.SetCookie(w, config.clearAuthCookie("refreshToken"))
-	http.SetCookie(w, config.clearAuthCookie("sessionID"))
+	secure := !config.Dev
+	http.SetCookie(w, clearAuthCookie("accessToken", secure))
+	http.SetCookie(w, clearAuthCookie("refreshToken", secure))
+	http.SetCookie(w, clearAuthCookie("sessionID", secure))
 	w.Header().Add("HX-Refresh", "true")
 	w.WriteHeader(http.StatusOK)
 }

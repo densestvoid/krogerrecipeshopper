@@ -57,17 +57,15 @@ var serveCmd = &cobra.Command{
 			Dev:          viper.GetBool("dev"),
 		}
 		if config.Dev {
-			if config.Domain == "" {
-				scheme := "http"
-				if viper.GetBool("secure") {
-					scheme = "https"
-				}
-				host := viper.GetString("host")
-				if host == "" {
-					host = "localhost"
-				}
-				config.Domain = fmt.Sprintf("%s://%s:%d", scheme, host, viper.GetInt("port"))
+			scheme := "http"
+			if viper.GetBool("secure") {
+				scheme = "https"
 			}
+			host := viper.GetString("host")
+			if host == "" {
+				host = "localhost"
+			}
+			config.Domain = fmt.Sprintf("%s://%s:%d", scheme, host, viper.GetInt("port"))
 			slog.Info("dev mode enabled",
 				"oauth_redirect_uri", config.RedirectUrl(),
 				"register_in_kroger_portal", config.RedirectUrl(),
