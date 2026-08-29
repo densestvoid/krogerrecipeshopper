@@ -19,6 +19,7 @@ type Config struct {
 	ClientID     string
 	ClientSecret string
 	Domain       string
+	Dev          bool
 }
 
 func New(ctx context.Context, logger *slog.Logger, config Config, repo *data.Repository, cache *data.Cache) http.Handler {

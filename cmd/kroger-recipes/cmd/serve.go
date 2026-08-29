@@ -50,11 +50,29 @@ var serveCmd = &cobra.Command{
 		}
 		cache := data.NewCache(client, viper.GetDuration("cache-expiration"))
 
-		handler := server.New(context.Background(), slog.Default(), server.Config{
+		config := server.Config{
 			ClientID:     viper.GetString("client-id"),
 			ClientSecret: viper.GetString("client-secret"),
 			Domain:       viper.GetString("domain"),
-		}, repo, cache)
+			Dev:          viper.GetBool("dev"),
+		}
+		if config.Dev {
+			scheme := "http"
+			if viper.GetBool("secure") {
+				scheme = "https"
+			}
+			host := viper.GetString("host")
+			if host == "" {
+				host = "localhost"
+			}
+			config.Domain = fmt.Sprintf("%s://%s:%d", scheme, host, viper.GetInt("port"))
+			slog.Info("dev mode enabled",
+				"oauth_redirect_uri", config.RedirectUrl(),
+				"register_in_kroger_portal", config.RedirectUrl(),
+			)
+		}
+
+		handler := server.New(context.Background(), slog.Default(), config, repo, cache)
 
 		if !viper.GetBool("secure") {
 			srv := http.Server{
@@ -90,6 +108,7 @@ func init() {
 	// Server details
 	serveCmd.Flags().StringP("host", "a", "localhost", "server host address")
 	serveCmd.Flags().Int16P("port", "p", 8080, "server host port")
+	serveCmd.Flags().Bool("dev", false, "local development mode (non-secure cookies, auto domain from host/port)")
 	serveCmd.Flags().BoolP("secure", "s", false, "secure connection (https)")
 	serveCmd.Flags().String("tls-cert", "", "server certificate")
 	serveCmd.Flags().String("tls-key", "", "server key")
