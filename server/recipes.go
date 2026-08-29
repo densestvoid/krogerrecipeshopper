@@ -196,11 +196,11 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
 					}
-				}
 
-				if !app.CanViewRecipe(recipe, authCookies.AccountID) {
-					http.Error(w, "unauthorized", http.StatusUnauthorized)
-					return
+					if !app.CanViewRecipe(recipe, authCookies.AccountID) {
+						http.Error(w, "unauthorized", http.StatusUnauthorized)
+						return
+					}
 				}
 
 				if err := templates.RecipeDetailsModalContent(authCookies.AccountID, recipe, false).Render(w); err != nil {
