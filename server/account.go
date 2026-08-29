@@ -117,7 +117,7 @@ func NewAccountMux(config Config, repo *data.Repository, cache *data.Cache) func
 					http.Error(w, fmt.Sprintf("deleting account: %v", err), http.StatusInternalServerError)
 					return
 				}
-				ClearAuthCookies(w)
+				ClearAuthCookies(config, w)
 			})
 
 			r.Patch("/settings", func(w http.ResponseWriter, r *http.Request) {
