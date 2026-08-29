@@ -11,8 +11,8 @@ import (
 	"github.com/densestvoid/krogerrecipeshopper/data"
 )
 
-func Ingredients(accountID uuid.UUID, list data.List) gomponents.Node {
-	return BasePage("Ingredients", "/", gomponents.Group{
+func Ingredients(accountID uuid.UUID, list data.List, basePath string) gomponents.Node {
+	return BasePage("Ingredients", basePath, gomponents.Group{
 		html.Div(
 			html.Class("text-center"),
 			html.H3(
@@ -26,7 +26,7 @@ func Ingredients(accountID uuid.UUID, list data.List) gomponents.Node {
 			gomponents.If(accountID == list.AccountID, ModalButton(
 				"btn-primary",
 				"Add ingredient",
-				htmx.Get(".//details"),
+				htmx.Get("details"),
 			)),
 		),
 	})

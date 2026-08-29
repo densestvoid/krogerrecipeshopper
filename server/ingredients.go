@@ -1,11 +1,11 @@
 package server
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -15,17 +15,6 @@ import (
 	"github.com/densestvoid/krogerrecipeshopper/kroger"
 	"github.com/densestvoid/krogerrecipeshopper/templates"
 )
-
-type listContextKey struct{}
-
-func listFromContext(ctx context.Context) (data.List, bool) {
-	list, ok := ctx.Value(listContextKey{}).(data.List)
-	return list, ok
-}
-
-func withList(ctx context.Context, list data.List) context.Context {
-	return context.WithValue(ctx, listContextKey{}, list)
-}
 
 func RequireListIngredientsAccess(repo *data.Repository) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -47,7 +36,7 @@ func RequireListIngredientsAccess(repo *data.Repository) func(http.Handler) http
 				return
 			}
 
-			next.ServeHTTP(w, r.WithContext(withList(r.Context(), list)))
+			next.ServeHTTP(w, r)
 		})
 	}
 }
@@ -80,12 +69,12 @@ func RequireRecipeIngredientsAccess(repo *data.Repository) func(http.Handler) ht
 				}
 			}
 
-			next.ServeHTTP(w, r.WithContext(withList(r.Context(), list)))
+			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-func RequireListOwner() func(http.Handler) http.Handler {
+func RequireListOwner(repo *data.Repository) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authCookies, err := GetAuthCookies(r)
@@ -94,9 +83,10 @@ func RequireListOwner() func(http.Handler) http.Handler {
 				return
 			}
 
-			list, ok := listFromContext(r.Context())
-			if !ok {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
+			listID := uuid.MustParse(chi.URLParam(r, "id"))
+			list, err := repo.GetList(r.Context(), listID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			if list.AccountID != authCookies.AccountID {
@@ -113,6 +103,37 @@ func ProductImageLink(productID, imageSize string) string {
 	return fmt.Sprintf("https://www.kroger.com/product/images/%s/front/%s", imageSize, productID)
 }
 
+func ingredientBasePath(r *http.Request) string {
+	basePath := r.URL.Path
+	if !strings.HasSuffix(basePath, "/") {
+		basePath += "/"
+	}
+	return basePath
+}
+
+func ingredientDetailsHandler(repo *data.Repository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		listID := uuid.MustParse(chi.URLParam(r, "id"))
+
+		productID := chi.URLParam(r, "productID")
+		var ingredient data.Ingredient
+		if productID != "" {
+			var err error
+			ingredient, err = repo.GetIngredient(r.Context(), listID, productID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+
+		if err := templates.IngredientDetailsModalContent(ingredient).Render(w); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
 func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -122,13 +143,14 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 				return
 			}
 
-			list, ok := listFromContext(r.Context())
-			if !ok {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
+			listID := uuid.MustParse(chi.URLParam(r, "id"))
+			list, err := repo.GetList(r.Context(), listID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
-			if err := templates.Ingredients(authCookies.AccountID, list).Render(w); err != nil {
+			if err := templates.Ingredients(authCookies.AccountID, list, ingredientBasePath(r)).Render(w); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -142,13 +164,14 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 				return
 			}
 
-			list, ok := listFromContext(r.Context())
-			if !ok {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
+			listID := uuid.MustParse(chi.URLParam(r, "id"))
+			list, err := repo.GetList(r.Context(), listID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
-			ingredients, err := repo.ListIngredients(r.Context(), list.ID)
+			ingredients, err := repo.ListIngredients(r.Context(), listID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -224,14 +247,12 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 		})
 
 		r.Group(func(r chi.Router) {
-			r.Use(RequireListOwner())
+			r.Use(RequireListOwner(repo))
+
+			r.Get("/details", ingredientDetailsHandler(repo))
 
 			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-				list, ok := listFromContext(r.Context())
-				if !ok {
-					http.Error(w, "unauthorized", http.StatusUnauthorized)
-					return
-				}
+				listID := uuid.MustParse(chi.URLParam(r, "id"))
 
 				if err := r.ParseForm(); err != nil {
 					http.Error(w, err.Error(), http.StatusBadRequest)
@@ -259,13 +280,13 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 					quantityPercent = int(quantityFloat * 100)
 				}
 
-				if _, err := repo.GetIngredient(r.Context(), list.ID, productID); err != nil {
-					if err := repo.CreateIngredient(r.Context(), productID, list.ID, quantityPercent, staple); err != nil {
+				if _, err := repo.GetIngredient(r.Context(), listID, productID); err != nil {
+					if err := repo.CreateIngredient(r.Context(), productID, listID, quantityPercent, staple); err != nil {
 						http.Error(w, fmt.Sprintf("creating ingredient: %v", err), http.StatusInternalServerError)
 						return
 					}
 				} else {
-					if err := repo.UpdateIngredient(r.Context(), productID, list.ID, quantityPercent, staple); err != nil {
+					if err := repo.UpdateIngredient(r.Context(), productID, listID, quantityPercent, staple); err != nil {
 						http.Error(w, fmt.Sprintf("updating ingredient: %v", err), http.StatusInternalServerError)
 						return
 					}
@@ -276,40 +297,12 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 			})
 
 			r.Route("/{productID}", func(r chi.Router) {
-				r.Get("/details", func(w http.ResponseWriter, r *http.Request) {
-					list, ok := listFromContext(r.Context())
-					if !ok {
-						http.Error(w, "unauthorized", http.StatusUnauthorized)
-						return
-					}
-
-					productID := chi.URLParam(r, "productID")
-					var ingredient data.Ingredient
-					if productID != "" {
-						var err error
-						ingredient, err = repo.GetIngredient(r.Context(), list.ID, productID)
-						if err != nil {
-							http.Error(w, err.Error(), http.StatusInternalServerError)
-							return
-						}
-					}
-
-					if err := templates.IngredientDetailsModalContent(ingredient).Render(w); err != nil {
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-						return
-					}
-					w.WriteHeader(http.StatusOK)
-				})
+				r.Get("/details", ingredientDetailsHandler(repo))
 
 				r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-					list, ok := listFromContext(r.Context())
-					if !ok {
-						http.Error(w, "unauthorized", http.StatusUnauthorized)
-						return
-					}
-
+					listID := uuid.MustParse(chi.URLParam(r, "id"))
 					productID := chi.URLParam(r, "productID")
-					if err := repo.DeleteIngredient(r.Context(), productID, list.ID); err != nil {
+					if err := repo.DeleteIngredient(r.Context(), productID, listID); err != nil {
 						http.Error(w, fmt.Sprintf("deleting ingredient: %v", err), http.StatusInternalServerError)
 						return
 					}
