@@ -119,6 +119,7 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 
 			staple := false
 			if r.Form.Has("staple") {
+				var err error
 				if staple, err = strconv.ParseBool(r.FormValue("staple")); err != nil {
 					http.Error(w, fmt.Sprintf("invalid staple value: %v", err), http.StatusBadRequest)
 					return
@@ -136,11 +137,13 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 			}
 
 			if _, err := repo.GetIngredient(r.Context(), listID, productID); err != nil {
+				// Doesn't exist, create it
 				if err := repo.CreateIngredient(r.Context(), productID, listID, quantityPercent, staple); err != nil {
 					http.Error(w, fmt.Sprintf("creating ingredient: %v", err), http.StatusInternalServerError)
 					return
 				}
 			} else {
+				// Exists, update it
 				if err := repo.UpdateIngredient(r.Context(), productID, listID, quantityPercent, staple); err != nil {
 					http.Error(w, fmt.Sprintf("updating ingredient: %v", err), http.StatusInternalServerError)
 					return
@@ -171,6 +174,7 @@ func NewIngredientMux(config Config, repo *data.Repository, cache *data.Cache) f
 				return
 			}
 
+			// hyrdate ingredients with product info
 			productIDs := []string{}
 			for _, ingredient := range ingredients {
 				productIDs = append(productIDs, ingredient.ProductID)
