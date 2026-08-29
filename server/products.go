@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -29,6 +30,21 @@ func NewProductsMux(config Config, repo *data.Repository, cache *data.Cache) fun
 				return
 			}
 
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			searchTerm := strings.TrimSpace(r.FormValue("search"))
+			if searchTerm == "" {
+				if err := templates.ProductsSearchTable(nil).Render(w); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
 			authClient := kroger.NewAuthorizationClient(http.DefaultClient, kroger.PublicEnvironment, config.ClientID, config.ClientSecret)
 			authResp, err := authClient.PostToken(r.Context(), kroger.ClientCredentials{
 				Scope: kroger.ScopeProductCompact,
@@ -39,14 +55,9 @@ func NewProductsMux(config Config, repo *data.Repository, cache *data.Cache) fun
 			}
 			productsClient := kroger.NewProductsClient(http.DefaultClient, kroger.PublicEnvironment, authResp.AccessToken)
 
-			if err := r.ParseForm(); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-
 			productsResp, err := productsClient.GetProducts(r.Context(), kroger.GetProductsRequest{
 				Filters: kroger.GetProductsByItemAndAvailabilityFilters{
-					Term: r.FormValue("search"),
+					Term: searchTerm,
 				},
 				LocationID: account.LocationID,
 			})
