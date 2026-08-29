@@ -173,6 +173,7 @@ type Product struct {
 	Temperature     Temperature     `json:"temperature"`
 	Images          []Image         `json:"images"`
 	UPC             int             `json:"upc,string"`
+	SnapEligible    bool            `json:"snapEligible"`
 }
 
 type AisleLocation struct {

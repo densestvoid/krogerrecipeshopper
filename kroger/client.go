@@ -138,11 +138,10 @@ func (p *HTTPResponseJSONParser) ParseHTTPResponse(resp *http.Response) error {
 	// Resettable read buffer
 	bytesReader := bytes.NewReader(bs)
 	decoder := json.NewDecoder(bytesReader)
-	decoder.DisallowUnknownFields()
 
 	// Check for auth error
 	var authError AuthError
-	if err := decoder.Decode(&authError); err == nil {
+	if err := decoder.Decode(&authError); err == nil && authError.ErrorName != "" {
 		return &authError
 	}
 
@@ -153,7 +152,7 @@ func (p *HTTPResponseJSONParser) ParseHTTPResponse(resp *http.Response) error {
 
 	// Check for API error
 	var apiErrors apiErrors
-	if err := decoder.Decode(&apiErrors); err == nil {
+	if err := decoder.Decode(&apiErrors); err == nil && apiErrors.Errors.Code != "" {
 		return &apiErrors.Errors
 	}
 
