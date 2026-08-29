@@ -11,28 +11,28 @@ import (
 	"github.com/densestvoid/krogerrecipeshopper/data"
 )
 
-func Ingredients(accountID uuid.UUID, list data.List) gomponents.Node {
-	return BasePage("Ingredients", "/", gomponents.Group{
+func Ingredients(accountID uuid.UUID, list data.List, basePath string) gomponents.Node {
+	return BasePage("Ingredients", basePath+"/", gomponents.Group{
 		html.Div(
 			html.Class("text-center"),
 			html.H3(
 				gomponents.Text(fmt.Sprintf("%s ingredients", list.Name)),
 			),
 			html.Div(
-				htmx.Get(fmt.Sprintf("/lists/%v/ingredients/table", list.ID)),
+				htmx.Get("table"),
 				htmx.Swap("innerHTML"),
 				htmx.Trigger("load,ingredient-update from:body"),
 			),
 			gomponents.If(accountID == list.AccountID, ModalButton(
 				"btn-primary",
 				"Add ingredient",
-				htmx.Get(fmt.Sprintf("/lists/%v/ingredients//details", list.ID)),
+				htmx.Get(basePath+"//details"),
 			)),
 		),
 	})
 }
 
-func IngredientDetailsModalContent(listID uuid.UUID, ingredient data.Ingredient) gomponents.Node {
+func IngredientDetailsModalContent(ingredient data.Ingredient) gomponents.Node {
 	ifExists := func(node gomponents.Node) gomponents.Node {
 		return gomponents.If(ingredient.ProductID != "", node)
 	}
@@ -44,7 +44,7 @@ func IngredientDetailsModalContent(listID uuid.UUID, ingredient data.Ingredient)
 	return ModalContent(
 		"Ingredient Details",
 		ModalForm(
-			htmx.Post(fmt.Sprintf("/lists/%v/ingredients", listID)),
+			htmx.Post("."),
 			ifExists(html.Input(
 				html.Type("hidden"),
 				html.Name("productID"),
@@ -239,7 +239,7 @@ func IngredientRow(accountID, recipeAccountID uuid.UUID, ingredient Ingredient) 
 				ModalButton(
 					"btn-primary",
 					"Edit details",
-					htmx.Get(fmt.Sprintf("/recipes/%v/ingredients/%s/details", ingredient.ListID, ingredient.ProductID)),
+					htmx.Get(fmt.Sprintf("%s/details", ingredient.ProductID)),
 				),
 				html.Button(
 					html.Type("button"),
@@ -254,7 +254,7 @@ func IngredientRow(accountID, recipeAccountID uuid.UUID, ingredient Ingredient) 
 							html.Type("button"),
 							html.Class("btn btn-danger w-100"),
 							gomponents.Text("Delete"),
-							htmx.Delete(fmt.Sprintf("/recipes/%v/ingredients/%s", ingredient.ListID, ingredient.ProductID)),
+							htmx.Delete(ingredient.ProductID),
 							htmx.Swap("none"),
 							htmx.Confirm("Are you sure you want to remove this ingredient from the recipe?"),
 						),

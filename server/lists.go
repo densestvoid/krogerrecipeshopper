@@ -234,7 +234,10 @@ func NewListsMux(config Config, repo *data.Repository, cache *data.Cache) func(c
 				w.WriteHeader(http.StatusOK)
 			})
 
-			r.Route("/ingredients", NewIngredientMux(config, repo, cache))
+			r.Route("/ingredients", func(r chi.Router) {
+				r.Use(RequireListIngredientsAccess(repo))
+				NewIngredientMux(config, repo, cache)(r)
+			})
 		})
 	}
 }
