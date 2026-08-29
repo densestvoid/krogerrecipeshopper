@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/densestvoid/krogerrecipeshopper/app"
 	"github.com/densestvoid/krogerrecipeshopper/data"
 	"github.com/densestvoid/krogerrecipeshopper/templates"
 )
@@ -197,6 +198,11 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					}
 				}
 
+				if !app.CanViewRecipe(recipe, authCookies.AccountID) {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+
 				if err := templates.RecipeDetailsModalContent(authCookies.AccountID, recipe, false).Render(w); err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -370,6 +376,11 @@ func NewRecipesMux(config Config, repo *data.Repository, cache *data.Cache) func
 					return
 				}
 				w.WriteHeader(http.StatusOK)
+			})
+
+			r.Route("/ingredients", func(r chi.Router) {
+				r.Use(RequireRecipeIngredientsAccess(repo))
+				NewIngredientMux(config, repo, cache)(r)
 			})
 		})
 	}

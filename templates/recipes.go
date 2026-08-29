@@ -389,7 +389,7 @@ func RecipeRow(accountID uuid.UUID, recipe data.Recipe) gomponents.Node {
 		html.Li(
 			html.Class("dropdown-item"),
 			html.A(
-				html.Href(fmt.Sprintf("/lists/%v/ingredients", recipe.ListID)),
+				html.Href(fmt.Sprintf("/recipes/%v/ingredients", recipe.ListID)),
 				html.Button(
 					html.Type("button"),
 					html.Class("btn btn-secondary w-100"),
